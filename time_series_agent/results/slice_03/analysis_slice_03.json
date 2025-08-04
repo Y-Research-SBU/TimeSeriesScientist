@@ -1,0 +1,46 @@
+{
+  "basic_stats": {
+    "value": {
+      "count": 100.0,
+      "mean": 10.451490015740001,
+      "std": 2.231829537909672,
+      "min": 6.190999985,
+      "25%": 8.70549964925,
+      "50%": 10.3409996,
+      "75%": 12.1875000025,
+      "max": 14.70300007,
+      "skewness": 0.08228969573481779,
+      "kurtosis": -0.914120690391695
+    }
+  },
+  "trend_analysis": {
+    "has_trend": true,
+    "trend_direction": "decreasing",
+    "trend_strength": 0.016904112976925924,
+    "slope": -0.03772709865406548,
+    "intercept": 12.318981399116241
+  },
+  "seasonality_analysis": {
+    "has_seasonality": true,
+    "seasonal_period": 48,
+    "seasonal_strength": 0.5612588103063774
+  },
+  "stationarity_result": {
+    "is_stationary": false,
+    "p_value": 0.08069017731094064,
+    "test_statistic": -2.6628511471342104,
+    "critical_values": {
+      "1%": -3.5003788874873405,
+      "5%": -2.8921519665075235,
+      "10%": -2.5830997960069446
+    }
+  },
+  "data_characteristics": {
+    "length": 100,
+    "has_trend": true,
+    "has_seasonality": true,
+    "is_stationary": false,
+    "trend_direction": "decreasing",
+    "seasonal_period": 48
+  }
+}

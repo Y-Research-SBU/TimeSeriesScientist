@@ -1,0 +1,52 @@
+# Core dependencies
+pandas>=1.5.0
+numpy>=1.21.0
+scikit-learn>=1.1.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
+
+# Time series specific
+statsmodels>=0.13.0
+prophet>=1.1.0
+tbats>=1.1.0
+theta>=1.0.0
+croston>=0.1.0
+
+# Deep learning
+tensorflow>=2.10.0
+torch>=1.12.0
+keras>=2.10.0
+
+# Gradient boosting
+xgboost>=1.6.0
+lightgbm>=3.3.0
+
+# LLM and workflow
+langchain>=0.1.0
+langchain-openai>=0.1.0
+langgraph>=0.1.0
+openai>=1.0.0
+
+# Data processing
+pyyaml>=6.0
+python-dateutil>=2.8.0
+
+# Visualization
+plotly>=5.10.0
+bokeh>=2.4.0
+
+# Utilities
+tqdm>=4.64.0
+joblib>=1.2.0
+psutil>=5.9.0
+
+# Development and testing
+pytest>=7.0.0
+black>=22.0.0
+flake8>=5.0.0
+mypy>=0.991
+
+# Optional dependencies
+# jupyter>=1.0.0
+# ipywidgets>=7.7.0
+# ipython>=8.0.0 

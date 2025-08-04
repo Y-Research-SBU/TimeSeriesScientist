@@ -1,0 +1,23 @@
+{
+  "validation_result": {
+    "is_valid": true,
+    "errors": [],
+    "warnings": [],
+    "info": {
+      "length": 100,
+      "columns": [
+        "value"
+      ],
+      "dtypes": {
+        "value": "float64"
+      },
+      "date_range": {
+        "start": "2016-09-19T02:00:00",
+        "end": "2016-09-23T05:00:00"
+      }
+    }
+  },
+  "missing_values_handled": "interpolate",
+  "outliers_detected": 0,
+  "outliers_handled": "clip"
+}
