@@ -1,272 +1,348 @@
 # Time Series Prediction Agent
 
-工业级时序预测代理系统 - 基于 LangGraph 的智能时序预测框架
+This is the repo for time series forecasting agent system - Intelligent time series prediction framework based on LangGraph
 
-## 项目概述
+## Project Overview
 
-Time Series Prediction Agent 是一个基于 LangGraph 的工业级时序预测系统，采用多 Agent 协作的方式，实现从数据预处理到最终预测报告的完整工作流。
+Time Series Prediction Agent is a time series forecasting system based on LangGraph, using a multi-agent collaborative approach to implement a complete workflow from data preprocessing to final prediction reports.
 
-## 项目结构
+## Environment Setup
 
-```
-time_series_agent/
-│
-├── agents/                    # Agent 模块
-│   ├── preprocess_agent.py    # 数据预处理 Agent
-│   ├── analysis_agent.py      # 数据分析 Agent
-│   ├── validation_agent.py    # 验证集模型选择 Agent
-│   ├── forecast_agent.py      # 测试集预测 Agent
-│   ├── report_agent.py        # 报告生成 Agent
-│   └── memory.py              # 内存管理模块
-│
-├── graph/                     # 工作流图
-│   └── agent_graph.py         # AgentGraph 类
-│
-├── utils/                     # 工具模块
-│   ├── data_utils.py          # 数据工具
-│   ├── visualization_utils.py # 可视化工具
-│   └── file_utils.py          # 文件工具
-│
-├── config/                    # 配置模块
-│   └── default_config.py      # 默认配置
-│
-├── main.py                    # 主入口文件
-├── requirements.txt           # 依赖文件
-└── README.md                  # 项目说明
+### 1. Prerequisites
+
+- Python 3.8 or higher
+- OpenAI API key
+- Sufficient disk space for results and models
+
+### 2. Create Virtual Environment
+
+```bash
+# Create virtual environment
+conda create -n TimeAgent
+
+conda activate TimeAgent
 ```
 
-## 核心特性
-
-### 🤖 多 Agent 协作
-- **PreprocessAgent**: 数据清洗、缺失值处理、异常值检测
-- **AnalysisAgent**: 统计分析、趋势检测、季节性分析
-- **ValidationAgent**: 模型选择、超参数优化、交叉验证
-- **ForecastAgent**: 多模型预测、集成学习
-- **ReportAgent**: 综合报告生成、可视化
-
-### 🔄 LangGraph 工作流
-- 基于 LangGraph 的状态管理
-- 节点间直接对象传递
-- 支持并行处理和错误恢复
-- 完整的执行历史追踪
-
-### 📊 丰富的模型支持
-- **统计模型**: ARMA, ExponentialSmoothing, TBATS, Theta
-- **机器学习**: LinearRegression, RandomForest, SVR, GradientBoosting
-- **深度学习**: LSTM, NeuralNetwork, Transformer
-- **集成方法**: XGBoost, LightGBM, Prophet
-
-### 🎯 智能决策
-- LLM 驱动的模型选择
-- 自动超参数优化
-- 动态集成策略
-- 置信区间计算
-
-## 快速开始
-
-### 1. 安装依赖
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 设置环境变量
+### 4. Set Environment Variables
 
 ```bash
-export OPENAI_API_KEY="your-api-key"
+# Set your OpenAI API key
+export OPENAI_API_KEY="your-openai-api-key-here"
+
+# Optional: Set other environment variables
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 ```
 
-### 3. 运行实验
+## Code Execution
+
+### 1. Basic Usage
 
 ```bash
-python main.py --data_path dataset/ETT-small/ETTh1.csv \
-                --output_dir results \
+# Run with default configuration
+python main.py
+```
+
+### 2. Custom Configuration
+
+```bash
+# Run with custom parameters
+python main.py --data_path /your-customized-dataset \
                 --num_slices 10 \
                 --horizon 96 \
                 --llm_model gpt-4o
 ```
 
-### 4. 使用配置文件
+### 3. Configuration File
 
-```bash
-python main.py --config_file config/my_config.yaml
-```
-
-## 配置说明
-
-### 基础配置
+Create a custom configuration file `config/my_config.yaml`:
 
 ```yaml
-# 数据配置
-data_path: "dataset/ETT-small/ETTh1.csv"
+# Data configuration
+data_path: "../dataset/ETT-small/ETTh1.csv"
 date_column: "date"
 value_column: "OT"
 
-# 实验参数
+# Experiment parameters
 num_slices: 10
 input_length: 512
 horizon: 96
 k_models: 3
 
-# LLM配置
+# LLM configuration
 llm_provider: "openai"
 llm_model: "gpt-4o"
 llm_temperature: 0.1
 ```
 
-### 高级配置
-
-```yaml
-# 预处理配置
-preprocess:
-  missing_value_strategy: "interpolate"
-  outlier_strategy: "clip"
-  normalization: false
-
-# 模型配置
-models:
-  available_models: ["ARMA", "LSTM", "RandomForest"]
-  ensemble_method: "weighted_average"
-  hyperparameter_optimization: true
-
-# 可视化配置
-visualization:
-  figure_size: [12, 8]
-  save_format: "png"
-  show_plots: false
-```
-
-## 命令行参数
-
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `--data_path` | str | - | 输入数据文件路径 |
-| `--output_dir` | str | results | 输出目录 |
-| `--num_slices` | int | 10 | 数据切片数量 |
-| `--input_length` | int | 512 | 输入序列长度 |
-| `--horizon` | int | 96 | 预测步长 |
-| `--k_models` | int | 3 | 选择的模型数量 |
-| `--llm_provider` | str | openai | LLM提供商 |
-| `--llm_model` | str | gpt-4o | LLM模型名称 |
-| `--debug` | flag | False | 启用调试模式 |
-| `--verbose` | flag | False | 启用详细输出 |
-
-## 输出结构
-
-```
-results/
-├── experiment_20250101_120000/
-│   ├── logs/                    # 日志文件
-│   ├── models/                  # 保存的模型
-│   ├── visualizations/          # 可视化图片
-│   ├── reports/                 # 报告文件
-│   │   ├── comprehensive_report_20250101_120000.json
-│   │   └── experiment_summary_20250101_120000.json
-│   └── data/                    # 预测结果和指标
-│       ├── forecasts_20250101_120000.json
-│       └── metrics_20250101_120000.json
-```
-
-## 扩展开发
-
-### 添加新的 Agent
-
-1. 在 `agents/` 目录下创建新的 Agent 文件
-2. 实现 `run()` 方法
-3. 在 `graph/agent_graph.py` 中注册新节点
-
-```python
-class MyCustomAgent:
-    def __init__(self, config, memory):
-        self.config = config
-        self.memory = memory
-    
-    def run(self, state):
-        # 实现你的逻辑
-        return updated_state
-```
-
-### 添加新的模型
-
-1. 在相应的 Agent 中添加模型实现
-2. 更新配置文件中的模型列表
-3. 添加相应的超参数配置
-
-### 自定义工作流
-
-1. 修改 `graph/agent_graph.py` 中的节点连接
-2. 添加条件分支和循环逻辑
-3. 实现自定义的状态转换
-
-## 性能优化
-
-### 并行处理
-```yaml
-experiment:
-  parallel_processing: true
-  max_workers: 4
-```
-
-### 缓存管理
-```yaml
-system:
-  max_cache_size: 1000
-  cache_ttl: 3600
-```
-
-### 内存管理
-```yaml
-system:
-  max_memory_usage: "8GB"
-  cleanup_temp_files: true
-```
-
-## 故障排除
-
-### 常见问题
-
-1. **LLM API 错误**
-   - 检查 API 密钥设置
-   - 验证网络连接
-   - 确认模型名称正确
-
-2. **内存不足**
-   - 减少 `num_slices` 参数
-   - 启用 `parallel_processing: false`
-   - 增加系统内存
-
-3. **模型训练失败**
-   - 检查数据质量
-   - 调整超参数范围
-   - 查看详细日志
-
-### 调试模式
+Then run:
 
 ```bash
+python main.py --config_file config/my_config.yaml
+```
+
+### 4. Debug Mode
+
+```bash
+# Run with debug and verbose output
 python main.py --debug --verbose --data_path your_data.csv
 ```
 
-## 贡献指南
+## Agent Workflow
 
-1. Fork 项目
-2. 创建功能分支
-3. 提交更改
-4. 创建 Pull Request
+The system uses a sophisticated multi-agent workflow orchestrated by LangGraph. Here's how the agents work together:
 
-## 许可证
+### 1. PreprocessAgent
+
+**Purpose**: Data cleaning and preparation
+
+**Responsibilities**:
+- Load and validate time series data
+- Handle missing values using LLM-recommended strategies
+- Detect and handle outliers using rolling window IQR
+- Generate data quality reports
+- Create preprocessing visualizations
+
+**LLM Integration**: Uses LLM to analyze data quality and recommend preprocessing strategies
+
+**Output**: Cleaned data, quality metrics, and preprocessing visualizations
+
+### 2. AnalysisAgent
+
+**Purpose**: Comprehensive data analysis and insights
+
+**Responsibilities**:
+- Analyze data characteristics (trend, seasonality, stationarity)
+- Generate statistical summaries
+- Identify patterns and anomalies
+- Provide forecasting readiness assessment
+- Create analysis visualizations
+
+**LLM Integration**: Uses LLM to interpret data patterns and provide insights
+
+**Output**: Analysis report with key findings and recommendations
+
+### 3. ValidationAgent
+
+**Purpose**: Model selection and hyperparameter optimization
+
+**Responsibilities**:
+- Select best models based on data characteristics
+- Optimize hyperparameters for each selected model
+- Evaluate models on validation data
+- Rank models by performance
+- Generate validation reports
+
+**LLM Integration**: Uses LLM to select appropriate models and hyperparameters
+
+**Output**: Selected models with optimized hyperparameters and validation scores
+
+### 4. ForecastAgent
+
+**Purpose**: Generate predictions and ensemble forecasts
+
+**Responsibilities**:
+- Train models with optimized hyperparameters
+- Generate individual model predictions
+- Create ensemble predictions using multiple methods
+- Calculate confidence intervals
+- Generate forecast visualizations
+- Compute performance metrics
+
+**LLM Integration**: Uses LLM to decide ensemble integration strategies
+
+**Output**: Individual and ensemble predictions, metrics, and visualizations
+
+### 5. ReportAgent
+
+**Purpose**: Generate comprehensive final reports
+
+**Responsibilities**:
+- Synthesize all experiment results
+- Create executive summaries
+- Generate actionable recommendations
+- Produce final visualizations
+- Save results in multiple formats
+
+**LLM Integration**: Uses LLM to generate human-readable reports
+
+**Output**: Comprehensive experiment report with insights and recommendations
+
+## Workflow Execution
+
+```
+Data Input → PreprocessAgent → AnalysisAgent → ValidationAgent → ForecastAgent → ReportAgent → Final Output
+     ↓              ↓              ↓              ↓              ↓              ↓
+  Raw Data    Cleaned Data   Analysis Report   Selected Models   Predictions   Final Report
+```
+
+### Key Features of the Workflow:
+
+1. **State Management**: Each agent receives and updates a shared state object
+2. **Error Recovery**: Built-in retry mechanisms and fallback strategies
+3. **Rate Limiting**: Automatic delays and retries for API rate limits
+4. **Progress Monitoring**: Real-time progress tracking and timing information
+5. **Result Aggregation**: Automatic aggregation of results across multiple data slices
+
+## Project Structure
+
+```
+time_series_agent/
+│
+├── agents/                    # Agent modules
+│   ├── preprocess_agent.py    # Data preprocessing agent
+│   ├── analysis_agent.py      # Data analysis agent
+│   ├── validation_agent.py    # Model validation agent
+│   ├── forecast_agent.py      # Forecasting agent
+│   ├── report_agent.py        # Report generation agent
+│   └── memory.py              # Memory management module
+│
+├── graph/                     # Workflow orchestration
+│   └── agent_graph.py         # LangGraph workflow definition
+│
+├── utils/                     # Utility modules
+│   ├── data_utils.py          # Data utilities
+│   ├── visualization_utils.py # Visualization utilities
+│   ├── file_utils.py          # File management utilities
+│   └── model_library.py       # Model implementations
+│
+├── config/                    # Configuration
+│   └── default_config.py      # Default configuration
+│
+├── main.py                    # Main entry point
+├── requirements.txt           # Dependencies
+└── README.md                  # This file
+```
+
+## Output Structure
+
+```
+results/
+├── reports/                   # Generated reports
+│   ├── complete_time_series_report_YYYYMMDD_HHMMSS.json
+│   └── aggregated_forecast_results_YYYYMMDD_HHMMSS.json
+├── preprocess/                # Preprocessing outputs
+│   ├── visualizations/
+│   └── analysis_reports/
+├── forecast/                  # Forecasting outputs
+│   ├── visualizations/
+│   └── prediction_results/
+└── logs/                      # Execution logs
+```
+
+## Supported Models
+
+### Statistical Models
+- ARMA, ARIMA
+- Exponential Smoothing
+- TBATS, Theta
+- Prophet
+
+### Machine Learning Models
+- Linear Regression
+- Random Forest
+- SVR (Support Vector Regression)
+- Gradient Boosting
+- XGBoost, LightGBM
+
+### Deep Learning Models
+- LSTM
+- Neural Networks
+- Transformer
+
+### Ensemble Methods
+- Simple Average
+- Weighted Average
+- Median
+- Trimmed Mean
+
+## Configuration Options
+
+### Basic Configuration
+
+```python
+config = {
+    "data_path": "../dataset/ETT-small/ETTh1.csv",
+    "num_slices": 10,
+    "input_length": 512,
+    "horizon": 96,
+    "k_models": 3,
+    "llm_model": "gpt-4o",
+    "debug": True
+}
+```
+
+### Advanced Configuration
+
+```python
+config = {
+    # Data processing
+    "preprocess": {
+        "missing_value_strategy": "interpolate",
+        "outlier_strategy": "clip",
+        "normalization": False
+    },
+    
+    # Model selection
+    "models": {
+        "available_models": ["ARMA", "LSTM", "RandomForest"],
+        "ensemble_method": "weighted_average",
+        "hyperparameter_optimization": True
+    },
+    
+    # Visualization
+    "visualization": {
+        "figure_size": (12, 8),
+        "save_format": "png",
+        "show_plots": False
+    }
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **API Rate Limiting**
+   - The system automatically handles rate limits with retries
+   - Increase delays between slices if needed
+   - Check your OpenAI API usage limits
+
+2. **Memory Issues**
+   - Reduce `num_slices` parameter
+   - Use smaller `input_length`
+   - Monitor system memory usage
+
+3. **Model Import Errors**
+   - Install missing dependencies: `pip install prophet tbats`
+   - Some models have optional dependencies
+   - Check the model library for requirements
+
+### Debug Mode
+
+Enable debug mode for detailed logging:
+
+```bash
+python main.py --debug --verbose
+```
+
+## Performance Optimization
+
+### For Large Datasets
+- Reduce `num_slices` to process fewer slices
+- Use smaller `input_length` for faster processing
+- Enable parallel processing in configuration
+
+### For API Rate Limits
+- Increase delays between agent calls
+- Use fallback strategies when API fails
+- Monitor API usage and adjust accordingly
+
+## License
 
 MIT License
-
-## 联系方式
-
-- 项目维护者: [Your Name]
-- 邮箱: [your.email@example.com]
-- 项目地址: [GitHub Repository URL]
-
-## 更新日志
-
-### v1.0.0 (2025-01-01)
-- 初始版本发布
-- 支持基础时序预测功能
-- 集成 LangGraph 工作流
-- 多 Agent 协作架构 
