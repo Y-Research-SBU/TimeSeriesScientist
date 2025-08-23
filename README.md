@@ -1,4 +1,7 @@
-# Time Series Prediction Agent
+<div align="center">
+
+<h2>Time Series Prediction Agent</h2>
+</div>
 
 This is the repo for time series forecasting agent system - Intelligent time series prediction framework based on LangGraph
 
