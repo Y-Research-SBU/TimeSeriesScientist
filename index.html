@@ -213,28 +213,81 @@
                         </div>
 
                         <!-- Input/Output Demo -->
-                        <div class="relative flex justify-center mb-8" data-aos="zoom-y-out" data-aos-delay="450">
-                            <div class="flex flex-row gap-8 md:gap-12 max-w-5xl items-center">
-                                <!-- Input: Paper -->
-                                <div class="flex flex-col items-center flex-1">
-                                    <img class="rounded shadow-xl cursor-pointer hover:shadow-2xl transition-shadow duration-300 w-full h-auto max-w-sm mx-auto" 
-                                         src="./images/neural-paper.png" 
-                                         alt="Input Paper"
-                                         onclick="openPaperPdf()" />
-                                    <p class="text-lg text-gray-700 mt-4 text-center">
-                                        <strong>Input</strong>: <a href="#" onclick="openPaperPdf()" class="hover:underline">Paper</a><span style="color: #0645ad;">.pdf</span>
-                                    </p>
+                        <div x-data="{ modalExpanded: false }">
+                            <div class="relative flex justify-center mb-8" data-aos="zoom-y-out" data-aos-delay="450">
+                                <div class="flex flex-row gap-8 md:gap-12 max-w-5xl items-center">
+                                    <!-- Input: Paper -->
+                                    <div class="flex flex-col items-center flex-1">
+                                        <img class="rounded shadow-xl cursor-pointer hover:shadow-2xl transition-shadow duration-300 w-full h-auto max-w-sm mx-auto" 
+                                             src="./images/neural-paper.png" 
+                                             alt="Input Paper"
+                                             onclick="openPaperPdf()" />
+                                        <p class="text-lg text-gray-700 mt-4 text-center">
+                                            <strong>Input</strong>: <a href="#" onclick="openPaperPdf()" class="hover:underline">Paper</a><span style="color: #0645ad;">.pdf</span>
+                                        </p>
+                                    </div>
+                                    
+                                    <!-- Output: Poster -->
+                                    <div class="flex flex-col items-center flex-1">
+                                        <img class="rounded shadow-xl cursor-pointer hover:shadow-2xl transition-shadow duration-300 w-full h-auto max-w-sm mx-auto" 
+                                             src="./images/neural-poster.png" 
+                                             alt="Output Poster"
+                                             onclick="openPosterImage()" />
+                                        <p class="text-lg text-gray-700 mt-4 text-center">
+                                            <strong>Output</strong>: <a href="#" onclick="openPosterImage()" class="hover:underline">Poster</a><span style="color: #0645ad;">.pptx</span>
+                                        </p>
+                                    </div>
                                 </div>
-                                
-                                <!-- Output: Poster -->
-                                <div class="flex flex-col items-center flex-1">
-                                    <img class="rounded shadow-xl cursor-pointer hover:shadow-2xl transition-shadow duration-300 w-full h-auto max-w-sm mx-auto" 
-                                         src="./images/neural-poster.png" 
-                                         alt="Output Poster"
-                                         onclick="openPosterImage()" />
-                                    <p class="text-lg text-gray-700 mt-4 text-center">
-                                        <strong>Output</strong>: <a href="#" onclick="openPosterImage()" class="hover:underline">Poster</a><span style="color: #0645ad;">.pptx</span>
-                                    </p>
+                            </div>
+
+                            <!-- Demo Video Button -->
+                            <div class="relative flex justify-center mb-8" data-aos="zoom-y-out" data-aos-delay="500">
+                                <button class="flex items-center text-gray-700 bg-gray-100 hover:bg-gray-300 px-6 py-4 rounded-full font-medium group shadow-lg hover:shadow-xl transition-all duration-300" @click.prevent="modalExpanded = true" aria-controls="demo-modal">
+                                    <svg class="w-6 h-6 fill-current text-gray-600 group-hover:text-gray-700 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0 2C5.373 24 0 18.627 0 12S5.373 0 12 0s12 5.373 12 12-5.373 12-12 12z" />
+                                        <path d="M10 17l6-5-6-5z" />
+                                    </svg>
+                                    <span class="ml-3">Watch the Demo (10s)</span>
+                                </button>
+                            </div>
+
+                            <!-- Modal backdrop -->
+                            <div
+                                class="fixed inset-0 z-50 bg-white bg-opacity-75 transition-opacity backdrop-blur-sm"
+                                x-show="modalExpanded"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0"
+                                x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-out duration-100"
+                                x-transition:leave-start="opacity-100"
+                                x-transition:leave-end="opacity-0"
+                                aria-hidden="true"
+                                x-cloak
+                            ></div>
+
+                            <!-- Modal dialog -->
+                            <div
+                                id="demo-modal"
+                                class="fixed inset-0 z-50 overflow-hidden flex items-center justify-center transform px-4 sm:px-6"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="demo-modal-headline"
+                                x-show="modalExpanded"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 scale-95"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-out duration-200"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95"
+                                x-cloak
+                            >
+                                <div class="bg-white overflow-auto max-w-6xl w-full max-h-full rounded-lg shadow-2xl" @click.outside="modalExpanded = false" @keydown.escape.window="modalExpanded = false">
+                                    <div class="relative pb-9/16">
+                                        <video x-init="$watch('modalExpanded', value => value ? $el.play() : $el.pause())" class="absolute w-full h-full" width="1920" height="1080" loop controls>
+                                            <source src="./video/demo.mp4" type="video/mp4" />
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
                                 </div>
                             </div>
                         </div>
