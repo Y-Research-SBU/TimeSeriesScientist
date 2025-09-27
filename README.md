@@ -1,15 +1,60 @@
 <div align="center">
 
-<h2>Time Series Prediction Agent</h2>
+<h2>A Stitch in Time Forecasts Nine: <br>Towards End-to-End Agentic Time Series Forecasting</h2>
+<!-- <h4>🌟 🌟</h4> -->
+  
+  <br>
+
+ <p>
+    <a href="https://github.com/colzela">Haokun Zhao</a><sup>1</sup>&nbsp;
+    <a href="https://wyattz23.github.io">Xiang Zhang</a><sup>2</sup>&nbsp;
+    <a href="https://upup-wei.github.io/">Jiaqi Wei</a><sup>3</sup>&nbsp;
+    <a href="https://Y-Research-SBU.github.io/PosterGen">Yiwei Xu</a><sup>4</sup>&nbsp;
+    <a href="https://yutinghe-list.github.io">Yuting He</a><sup>3</sup>&nbsp;
+    <a href="https://intersun.github.io">Siqi Sun</a><sup>3</sup>&nbsp;
+    <a href="https://chenyuyou.me/">Chenyu You</a><sup>7</sup>
+  </p>
+
+  <p>
+    <sup>1</sup> University of California, San Diego &nbsp;&nbsp; 
+    <sup>2</sup> University of British Columbia &nbsp;&nbsp;
+    <sup>3</sup> Zhejiang University &nbsp;&nbsp; <br>
+    <sup>4</sup> University of California, Los Angeles &nbsp;&nbsp; 
+    <sup>5</sup> Case Western Reserve University &nbsp;&nbsp; 
+    <sup>6</sup> Fudan University &nbsp;&nbsp; 
+    <sup>7</sup> Stony Brook University &nbsp;&nbsp; 
+    <!-- <sup>★</sup> Equal Contribution <br> -->
+  </p>
+
+<p align="center">
+  <a href="">
+    <img src="https://img.shields.io/badge/ArXiv-2508.17188-red?style=flat-square&logo=arxiv" alt="Paper">
+  </a>
+  <a href="https://Y-Research-SBU.github.io/PosterGen">
+    <img src="https://img.shields.io/badge/Project-Website-blue?style=flat-square&logo=googlechrome" alt="Project Website">
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/LangGraph-0.4.8-042f2c?style=flat-square&logo=langgraph" alt="LangGraph 0.4.8">
+  </a>
+  <br>
+  <a href="https://github.com/Y-Research-SBU/PosterGen/issues/1">
+    <img src="https://img.shields.io/badge/WeChat-Group-green?style=flat-square&logo=wechat" alt="WeChat Group">
+  </a>
+  <a href="https://discord.gg/44pKs6b3">
+    <img src="https://img.shields.io/badge/Discord-Community-5865F2?style=flat-square&logo=discord" alt="Discord Community">
+  </a>
+</p>
 </div>
 
-This is the repo for time series forecasting agent system - Intelligent time series prediction framework based on LangGraph
-
-## Project Overview
-
+## Abstract
 
 Time Series Prediction Agent is a time series forecasting system based on LangGraph, using a multi-agent collaborative approach to implement a complete workflow from data preprocessing to final prediction reports.
-![workflow](/assets/workflow.jpg)
+![workflow](/assets/framework.jpg)
+
+## 📢 News
+
+- **2025.09.27** Code Released. TimeSeriesScientist now available! 🎉🎉
+
 ## Environment Setup
 
 ### 1. Prerequisites
