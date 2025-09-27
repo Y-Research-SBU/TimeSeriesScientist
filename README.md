@@ -49,7 +49,7 @@
 ## Abstract
 
 Time Series Prediction Agent is a time series forecasting system based on LangGraph, using a multi-agent collaborative approach to implement a complete workflow from data preprocessing to final prediction reports.
-![workflow](/assets/framework.jpg)
+![workflow](/assets/framework.png)
 
 ## 📢 News
 
