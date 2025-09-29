@@ -65,7 +65,7 @@
 
 ## 📢 News
 
-- **2025.09.27** Code Released. TimeSeriesScientist now available! 🎉🎉
+- **2025.09.30** Code Released. TimeSeriesScientist now available! 🎉🎉
 
 ## 🚀 Quick Start
 
