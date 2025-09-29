@@ -8,9 +8,9 @@
   <br>
   
   <p>
-      <a href="https://github.com/colzela">Haokun Zhao</a><sup>1</sup>&nbsp;
-      <a href="https://wyattz23.github.io">Xiang Zhang</a><sup>2</sup>&nbsp;
-      <a href="https://upup-wei.github.io/">Jiaqi Wei</a><sup>3</sup>&nbsp;
+      <a href="https://github.com/colzela">Haokun Zhao</a><sup>1 ★</sup>&nbsp;
+      <a href="https://wyattz23.github.io">Xiang Zhang</a><sup>2 ★</sup>&nbsp;
+      <a href="https://upup-wei.github.io/">Jiaqi Wei</a><sup>3 ★</sup>&nbsp;
       <a href="https://Y-Research-SBU.github.io/PosterGen">Yiwei Xu</a><sup>4</sup>&nbsp;
       <a href="https://yutinghe-list.github.io">Yuting He</a><sup>3</sup>&nbsp;
       <a href="https://intersun.github.io">Siqi Sun</a><sup>3</sup>&nbsp;
@@ -25,7 +25,7 @@
       <sup>5</sup> Case Western Reserve University &nbsp;&nbsp; 
       <sup>6</sup> Fudan University &nbsp;&nbsp; 
       <sup>7</sup> Stony Brook University &nbsp;&nbsp; 
-      <!-- <sup>★</sup> Equal Contribution <br> -->
+      <sup>★</sup> Equal Contribution <br>
   </p>
   
   <p align="center">
@@ -38,9 +38,9 @@
     <a href="#">
       <img src="https://img.shields.io/badge/LangGraph-0.4.8-042f2c?style=flat-square&logo=langgraph" alt="LangGraph 0.4.8">
     </a>
-    <a href="https://github.com/Y-Research-SBU/TimeSeriesScientist/issues/1">
+    <!-- <a href="https://github.com/Y-Research-SBU/TimeSeriesScientist/issues/1">
       <img src="https://img.shields.io/badge/WeChat-Group-green?style=flat-square&logo=wechat" alt="WeChat Group">
-    </a>
+    </a> -->
     <!-- <a href="https://discord.gg/44pKs6b3">
       <img src="https://img.shields.io/badge/Discord-Community-5865F2?style=flat-square&logo=discord" alt="Discord Community">
     </a> -->
