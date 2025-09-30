@@ -110,7 +110,7 @@ python main.py
 ```
 
 ### 2. Custom Configuration
-
+The customized dataset must be provided in .csv format with at least two columns: `"data"` and `"OT"`. The `"data"` column contains the timestamps, while the `"OT"` column records the target values at each corresponding timestamp. An Example input file is provided at `dataset/HTTh1.csv`.
 ```bash
 # Run with custom parameters
 python main.py --data_path /your-customized-dataset \
@@ -119,35 +119,7 @@ python main.py --data_path /your-customized-dataset \
                 --llm_model gpt-4o
 ```
 
-### 3. Configuration File
-
-Create a custom configuration file `config/my_config.yaml`:
-
-```yaml
-# Data configuration
-data_path: "../dataset/ETT-small/ETTh1.csv"
-date_column: "date"
-value_column: "OT"
-
-# Experiment parameters
-num_slices: 10
-input_length: 512
-horizon: 96
-k_models: 3
-
-# LLM configuration
-llm_provider: "openai"
-llm_model: "gpt-4o"
-llm_temperature: 0.1
-```
-
-Then run:
-
-```bash
-python main.py --config_file config/my_config.yaml
-```
-
-### 4. Debug Mode
+### 3. Debug Mode
 
 ```bash
 # Run with debug and verbose output
