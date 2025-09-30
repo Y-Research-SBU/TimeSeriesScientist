@@ -2,7 +2,7 @@
 
   <img src="/assets/logo.png" height="100" style="object-fit: contain;">
 
-  <h2>TimeSeriesScientist: A General-Purpose Time Series AI Scientist </h2>
+  <h2>TimeSeriesScientist: A General-Purpose AI Agent for Time Series Analysis</h2>
   <!-- <h4>🌟 🌟</h4> -->
     
   <br>
