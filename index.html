@@ -217,10 +217,10 @@
                                 <div class="flex flex-row gap-8 md:gap-12 max-w-5xl items-center">
                                     <!-- Input: Paper -->
                                     <div class="flex flex-col items-center flex-1">
-                                        <img class="rounded shadow-xl cursor-pointer hover:shadow-2xl transition-shadow duration-300 w-full h-auto max-w-sm mx-auto" 
+                                        <img class="rounded shadow-xl hover:shadow-2xl w-full h-auto max-w-sm mx-auto" 
                                              src="./images/mae_radar.png" 
                                              alt="Input Paper"
-                                             onclick="openPaperPdf()" />
+                                             />
                                         <!-- <p class="text-lg text-gray-700 mt-4 text-center">
                                             <strong>Input</strong>: <a href="#" onclick="openPaperPdf()" class="hover:underline">Paper</a><span style="color: #0645ad;">.pdf</span>
                                         </p> -->
@@ -228,10 +228,10 @@
                                     
                                     <!-- Output: Poster -->
                                     <div class="flex flex-col items-center flex-1">
-                                        <img class="rounded shadow-xl cursor-pointer hover:shadow-2xl transition-shadow duration-300 w-full h-auto max-w-sm mx-auto" 
+                                        <img class="rounded shadow-xl hover:shadow-2xl w-full h-auto max-w-sm mx-auto" 
                                              src="./images/winrate_radar_pentagon.png" 
                                              alt="Output Poster"
-                                             onclick="openPosterImage()" />
+                                             />
                                         <!-- <p class="text-lg text-gray-700 mt-4 text-center">
                                             <strong>Output</strong>: <a href="#" onclick="openPosterImage()" class="hover:underline">Poster</a><span style="color: #0645ad;">.pptx</span>
                                         </p> -->
@@ -884,7 +884,7 @@
                                         border-radius: 0.5rem;
                                         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
                                         padding: 0.5rem;
-                                        cursor: pointer;
+                                        /* cursor: pointer; */
                                         transition: box-shadow 0.3s ease;
                                         position: relative;
                                         width: var(--ablation-container-width);
@@ -914,7 +914,7 @@
 
                                 <!-- Ablation 1: Curator Agent -->
                                 <div class="flex flex-col" data-aos="zoom-y-out">
-                                    <figure class="ablation-image-container" onclick="window.open('./images/ablation-1.png', '_blank')">
+                                    <figure class="ablation-image-container">
                                         <img src="./images/ablation_MAE.png" 
                                              loading="lazy"
                                              alt="Curator Agent Ablation" />
@@ -925,7 +925,7 @@
 
                                 <!-- Ablation 2: Curator + Layout Agent -->
                                 <div class="flex flex-col" data-aos="zoom-y-out" data-aos-delay="150">
-                                    <figure class="ablation-image-container" onclick="window.open('./images/ablation-2.png', '_blank')">
+                                    <figure class="ablation-image-container">
                                         <img src="./images/ablation_MAPE.png" 
                                              loading="lazy"
                                              alt="Curator + Layout Agent Ablation" />
