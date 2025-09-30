@@ -2,7 +2,7 @@
 
   <img src="/assets/logo.png" height="100" style="object-fit: contain;">
 
-  <h2>A Stitch in Time Forecasts Nine: <br>Towards End-to-End Agentic Time Series Forecasting</h2>
+  <h2>TimeSeriesScientist: A General-Purpose Time Series AI Scientist </h2>
   <!-- <h4>🌟 🌟</h4> -->
     
   <br>
