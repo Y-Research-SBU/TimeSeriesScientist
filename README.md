@@ -97,7 +97,7 @@ pip install -r requirements.txt
 export OPENAI_API_KEY="your-openai-api-key-here"
 
 # Optional: Set other environment variables
-export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+export GOOGLE_API_KEY="your-google-api-key-here"
 ```
 
 ## 🎯 Code Execution
