@@ -64,7 +64,7 @@
 ![workflow](/assets/framework.png)
 
 ## 📢 News
-- **2025.10.201** Our paper is now available on [arXiv]()! 📄
+- **2025.10.01** Our paper is now available on [arXiv]()! 📄
 - **2025.10.01** Code Released. TimeSeriesScientist now available! 🎉🎉
 
 ## 🚀 Quick Start
