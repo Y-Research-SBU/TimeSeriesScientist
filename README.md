@@ -8,23 +8,23 @@
   <br>
   
   <p>
-      <a href="https://github.com/colzela">Haokun Zhao</a><sup>1 ★</sup>&nbsp;
-      <a href="https://wyattz23.github.io">Xiang Zhang</a><sup>2 ★</sup>&nbsp;
-      <a href="https://upup-wei.github.io/">Jiaqi Wei</a><sup>3 ★</sup>&nbsp;
-      <a href="https://Y-Research-SBU.github.io/PosterGen">Yiwei Xu</a><sup>4</sup>&nbsp;
-      <a href="https://yutinghe-list.github.io">Yuting He</a><sup>5</sup>&nbsp;
-      <a href="https://intersun.github.io">Siqi Sun</a><sup>6</sup>&nbsp;
-      <a href="https://chenyuyou.me/">Chenyu You</a><sup>7</sup>
+      <a href="https://github.com/colzela">Haokun Zhao</a><sup>1,2 ★</sup>&nbsp;
+      <a href="https://wyattz23.github.io">Xiang Zhang</a><sup>3 ★</sup>&nbsp;
+      <a href="https://upup-wei.github.io/">Jiaqi Wei</a><sup>4 ★</sup>&nbsp;
+      <a href="https://Y-Research-SBU.github.io/PosterGen">Yiwei Xu</a><sup>5</sup>&nbsp;
+      <a href="https://yutinghe-list.github.io">Yuting He</a><sup>6</sup>&nbsp;
+      <a href="https://intersun.github.io">Siqi Sun</a><sup>7</sup>&nbsp;
+      <a href="https://chenyuyou.me/">Chenyu You</a><sup>8</sup>
   </p>
   
   <p>
-      <sup>1</sup> University of California, San Diego &nbsp;&nbsp; 
-      <sup>2</sup> University of British Columbia &nbsp;&nbsp;
-      <sup>3</sup> Zhejiang University &nbsp;&nbsp; <br>
-      <sup>4</sup> University of California, Los Angeles &nbsp;&nbsp; 
-      <sup>5</sup> Case Western Reserve University &nbsp;&nbsp; 
-      <sup>6</sup> Fudan University &nbsp;&nbsp; 
-      <sup>7</sup> Stony Brook University &nbsp;&nbsp; 
+      <sup>1</sup> Stony Brook University &nbsp;&nbsp;
+      <sup>2</sup> University of California, San Diego &nbsp;&nbsp; 
+      <sup>3</sup> University of British Columbia &nbsp;&nbsp;
+      <sup>4</sup> Zhejiang University &nbsp;&nbsp; <br>
+      <sup>5</sup> University of California, Los Angeles &nbsp;&nbsp; 
+      <sup>6</sup> Case Western Reserve University &nbsp;&nbsp; 
+      <sup>7</sup> Fudan University &nbsp;&nbsp; 
       <sup>★</sup> Equal Contribution <br>
   </p>
   
