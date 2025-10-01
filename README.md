@@ -14,7 +14,7 @@
       <a href="https://Y-Research-SBU.github.io/PosterGen">Yiwei Xu</a><sup>5</sup>&nbsp;
       <a href="https://yutinghe-list.github.io">Yuting He</a><sup>6</sup>&nbsp;
       <a href="https://intersun.github.io">Siqi Sun</a><sup>7</sup>&nbsp;
-      <a href="https://chenyuyou.me/">Chenyu You</a><sup>8</sup>
+      <a href="https://chenyuyou.me/">Chenyu You</a><sup>1</sup>
   </p>
   
   <p>
@@ -375,6 +375,12 @@ python main.py --debug --verbose
 - Increase delays between agent calls
 - Use fallback strategies when API fails
 - Monitor API usage and adjust accordingly
+
+## Contact
+
+For questions, feedback, or collaboration opportunities, please contact:
+
+**Email**: [haz118@ucsd.edu](mailto:haz118@ucsd.edu), [chenyu.you@stonybrook.edu](mailto:chenyu.you@stonybrook.edu)
 
 ## License
 
