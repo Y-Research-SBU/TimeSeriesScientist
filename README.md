@@ -20,9 +20,9 @@
   <p>
       <sup>1</sup> Stony Brook University &nbsp;&nbsp;
       <sup>2</sup> University of California, San Diego &nbsp;&nbsp; 
-      <sup>3</sup> University of British Columbia &nbsp;&nbsp;
-      <sup>4</sup> Zhejiang University &nbsp;&nbsp; <br>
-      <sup>5</sup> University of California, Los Angeles &nbsp;&nbsp; 
+      <sup>3</sup> University of British Columbia &nbsp;&nbsp; <br>
+      <sup>4</sup> Zhejiang University &nbsp;&nbsp; 
+      <sup>5</sup> University of California, Los Angeles &nbsp;&nbsp; <br>
       <sup>6</sup> Case Western Reserve University &nbsp;&nbsp; 
       <sup>7</sup> Fudan University &nbsp;&nbsp; 
       <sup>★</sup> Equal Contribution <br>
