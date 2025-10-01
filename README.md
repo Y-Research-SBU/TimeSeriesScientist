@@ -11,7 +11,7 @@
       <a href="https://github.com/colzela">Haokun Zhao</a><sup>1,2 ★</sup>&nbsp;
       <a href="https://wyattz23.github.io">Xiang Zhang</a><sup>3 ★</sup>&nbsp;
       <a href="https://upup-wei.github.io/">Jiaqi Wei</a><sup>4 ★</sup>&nbsp;
-      <a href="https://Y-Research-SBU.github.io/PosterGen">Yiwei Xu</a><sup>5</sup>&nbsp; <br>
+      <a href="https://Y-Research-SBU.github.io/PosterGen">Yiwei Xu</a><sup>5</sup>&nbsp;
       <a href="https://yutinghe-list.github.io">Yuting He</a><sup>6</sup>&nbsp;
       <a href="https://intersun.github.io">Siqi Sun</a><sup>7</sup>&nbsp;
       <a href="https://chenyuyou.me/">Chenyu You</a><sup>1</sup>
