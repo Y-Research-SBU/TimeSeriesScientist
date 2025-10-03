@@ -110,7 +110,7 @@ python main.py
 ```
 
 ### 2. Custom Configuration
-The customized dataset must be provided in .csv format with at least two columns: `"data"` and `"OT"`. The `"data"` column contains the timestamps, while the `"OT"` column records the target values at each corresponding timestamp. An Example input file is provided at `dataset/HTTh1.csv`.
+The customized dataset must be provided in .csv format with at least two columns: `"date"` and `"OT"`. The `"date"` column contains the timestamps, while the `"OT"` column records the target values at each corresponding timestamp. An Example input file is provided at `dataset/HTTh1.csv`.
 ```bash
 # Run with custom parameters
 python main.py --data_path /your-customized-dataset \
