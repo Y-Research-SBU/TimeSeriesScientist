@@ -20,15 +20,14 @@ if __name__ == "__main__":
     # 1. Create and customize config
     config = DEFAULT_CONFIG.copy()
     # Example customizations (edit as needed):
-    config["llm_provider"] = "openai"
-    config["llm_model"] = "gpt-4o"
-    config["num_slices"] = 25  # User's configuration
+    config["num_slices"] = 25
     config["input_length"] = 512
-    config["horizon"] = 96  # User's configuration
-    config["data_path"] = "../dataset/ETT-small/ETTh2.csv"  # User's configuration
-    config["debug"] = True
-    config["verbose"] = True
-    # ... add more custom config as needed
+    config["horizon"] = 96
+    config["data_path"] = "../dataset/ETT-small/ETTh1.csv"
+    config["debug"] = False
+    config["verbose"] = False
+    config["date_column"] = "date"
+    config["value_column"] = "OT"
 
     # 2. Check for API key in environment
     if not os.environ.get("OPENAI_API_KEY"):
