@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="/assets/logo.png" height="100" style="object-fit: contain;">
+  <img src="/assets/logo2.png" height="100" style="object-fit: contain;">
 
   <h2>TimeSeriesScientist: A General-Purpose AI Agent for Time Series Analysis</h2>
   <!-- <h4>🌟 🌟</h4> -->
