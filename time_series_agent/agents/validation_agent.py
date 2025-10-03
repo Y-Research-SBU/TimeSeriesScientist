@@ -22,6 +22,7 @@ from utils.model_library import get_model_function
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # TypedDict for model selection output
@@ -90,18 +91,8 @@ Below is an example of the output:
                 "p": [0, 1, 2],
                 "d": [0, 1],
                 "q": [0, 1, 2],
-                "seasonal_order": [(0, 0, 0, 0), (1, 0, 1, 24)]
             }},
-            "reason": "ARIMA is suitable for handling non-stationary data with potential diurnal patterns. The short data span suggests using low values for p, d, and q, while the seasonal_order accounts for daily patterns."
-        }},
-        {{
-            "model": "ExponentialSmoothing",
-            "hyperparameters": {{
-                "trend": ["add", "mul", null],
-                "seasonal": ["add", "mul", null],
-                "seasonal_periods": [24]
-            }},
-            "reason": "Exponential Smoothing is effective for capturing trends and seasonality in short datasets. The model can adapt to the slight trend and potential daily seasonality observed in the data."
+            "reason": "string"
         }},
     ]
 }}
@@ -157,11 +148,10 @@ class ValidationAgent:
                     'selected_models': available_models[:self.config.get('k_models', 3)],
                     'reasoning': 'Fallback selection due to LLM failure'
                 }
-            
+                
             selected_models = model_selection['selected_models']
             logger.info(f"LLM selected {len(selected_models)} models: {selected_models}")
-            
-            # Test selected models on validation data
+
             tested_models = self._test_models_on_validation_data(selected_models, validation_data)
             
             if not tested_models:
@@ -185,8 +175,26 @@ class ValidationAgent:
             # Create structured output LLM
             structured_llm = self.llm.with_structured_output(ModelSelectionOutput)
             
+            # Convert analysis_result to dict if it's a string
+            if isinstance(analysis_result, str):
+                # Try to parse as JSON first
+                try:
+                    import json
+                    analysis_dict = json.loads(analysis_result)
+                except (json.JSONDecodeError, ValueError):
+                    # If not valid JSON, create a simple dict with the string as summary
+                    analysis_dict = {
+                        'summary': analysis_result,
+                        'trend_analysis': 'Analysis provided as text',
+                        'seasonality_analysis': 'Analysis provided as text',
+                        'stationarity': 'Analysis provided as text',
+                        'potential_issues': 'Analysis provided as text'
+                    }
+            else:
+                analysis_dict = analysis_result
+            
             # Create prompt for model selection
-            prompt = get_model_selection_prompt(analysis_result, available_models, self.n_candidates)
+            prompt = get_model_selection_prompt(analysis_dict, available_models, self.n_candidates)
             
             # Invoke the structured LLM
             selected_models_info = structured_llm.invoke([
@@ -205,32 +213,36 @@ class ValidationAgent:
         """Test selected models on validation data"""
         tested_models = []
         
-        for model_name in selected_models:
+        for model_info in selected_models:
+            model_name = model_info['model']
+            hyperparameters = model_info['hyperparameters']
             try:
                 logger.info(f"Testing model: {model_name}")
                 
-                # Optimize hyperparameters for this model
-                best_hyperparams = self._optimize_model_hyperparameters(model_name, validation_data)
+                # Get default hyperparameters for this model
+                # default_hyperparams = self._get_default_hyperparameters(model_name)
                 
-                # Evaluate model with best hyperparameters
-                validation_score = self._evaluate_model_on_validation(model_name, best_hyperparams, validation_data)
+                # Optimize hyperparameters for this model
+                best_hyperparams, best_metrics = self._optimize_model_hyperparameters(validation_data, model_name, hyperparameters)
                 
                 tested_models.append({
                     'model': model_name,
                     'hyperparameters': best_hyperparams,
-                    'validation_score': validation_score,
-                    'validation_metrics': {
-                        'mse': validation_score,
-                        'mae': validation_score * 0.8,  # Approximate
-                        'mape': validation_score * 20  # Approximate
-                    }
+                    'validation_score': best_metrics['mse'],
+                    'validation_metrics': best_metrics
                 })
                 
-                logger.info(f"Model {model_name} tested successfully with score: {validation_score}")
+                logger.info(f"Model {model_name} tested successfully with score: {best_metrics['mse']:.4f}")
                 
             except Exception as e:
                 logger.warning(f"Failed to test model {model_name}: {e}")
-                continue
+                # Add with infinite score so it won't be selected
+                tested_models.append({
+                    'model': model_name,
+                    'hyperparameters': {},
+                    'validation_score': float('inf'),
+                    'validation_metrics': {'mse': float('inf'), 'mae': float('inf'), 'mape': float('inf')}
+                })
         
         return tested_models
     
@@ -256,56 +268,7 @@ class ValidationAgent:
         
         return fallback_models
     
-    def _test_models_on_validation_data(self, validation_data: pd.DataFrame, 
-                                      selected_models_info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Test selected models on validation data with hyperparameter optimization
-        
-        Args:
-            validation_data: Validation dataset
-            selected_models_info: List of models with hyperparameters
-            
-        Returns:
-            List of tested models with best hyperparameters and performance scores
-        """
-        tested_models = []
-        
-        for model_info in selected_models_info:
-            model_name = model_info['model']
-            hyperparameters = model_info['hyperparameters']
-            
-            try:
-                logger.info(f"Testing model: {model_name}")
-                
-                # Optimize hyperparameters and get best performance
-                best_params, best_metrics = self._optimize_model_hyperparameters(
-                    validation_data, model_name, hyperparameters
-                )
-                
-                tested_models.append({
-                    'model': model_name,
-                    'hyperparameters': best_params,  # Use best hyperparameters found
-                    'validation_metrics': best_metrics,
-                    'validation_score': best_metrics['mse'],  # Use MSE as primary score for ranking
-                    'reason': model_info.get('reason', '')
-                })
-                
-                logger.info(f"Model {model_name} - Best MSE: {best_metrics['mse']:.4f}, MAE: {best_metrics['mae']:.4f}, MAPE: {best_metrics['mape']:.2f}%")
-                logger.info(f"Best hyperparameters: {best_params}")
-                
-            except Exception as e:
-                logger.warning(f"Failed to test model {model_name}: {e}")
-                # Add with infinite score so it won't be selected
-                tested_models.append({
-                    'model': model_name,
-                    'hyperparameters': hyperparameters,
-                    'validation_metrics': {'mse': float('inf'), 'mae': float('inf'), 'mape': float('inf')},
-                    'validation_score': float('inf'),
-                    'reason': f'Failed to test: {str(e)}'
-                })
-        
-        logger.info(f"_test_models_on_validation_data returning {len(tested_models)} models")
-        return tested_models
+
     
     def _optimize_model_hyperparameters(self, validation_data: pd.DataFrame, 
                                       model_name: str, hyperparameters: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, float]]:
@@ -320,10 +283,10 @@ class ValidationAgent:
         Returns:
             Tuple of (best_hyperparameters, best_metrics)
         """
-        logger.info(f"  Optimizing hyperparameters for {model_name}...")
+        logger.info(f"Optimizing hyperparameters for {model_name}...")
         
         if not hyperparameters:
-            logger.info(f"    No hyperparameters to optimize for {model_name}, using defaults")
+            logger.info(f"No hyperparameters to optimize for {model_name}, using defaults")
             # Use default parameters and evaluate
             default_metrics = self._evaluate_model_on_validation(validation_data, model_name, {})
             return {}, default_metrics
@@ -343,7 +306,7 @@ class ValidationAgent:
             if len(combinations) >= max_combinations:
                 break
         
-        logger.info(f"    Testing {len(combinations)} hyperparameter combinations...")
+        logger.info(f"Testing {len(combinations)} hyperparameter combinations...")
         
         best_params = {}
         best_metrics = {'mse': float('inf'), 'mae': float('inf'), 'mape': float('inf')}
@@ -354,17 +317,17 @@ class ValidationAgent:
                 # Evaluate model with these parameters
                 metrics = self._evaluate_model_on_validation(validation_data, model_name, params)
                 
-                if metrics['mse'] < best_metrics['mse']:
+                if metrics['mae'] < best_metrics['mae']:
                     best_metrics = metrics
                     best_params = params.copy()
                 
-                logger.debug(f"      Combination {i+1}/{len(combinations)}: MSE = {metrics['mse']:.4f}, Params = {params}")
+                print(f"Combination {i+1}/{len(combinations)}: MSE = {metrics['mse']:.4f}, MAE = {metrics['mae']:.4f}, MAPE = {metrics['mape']:.2f}%, Params = {params}")
                 
             except Exception as e:
-                logger.debug(f"      Combination {i+1}/{len(combinations)} failed: {e}")
+                logger.info(f"Combination {i+1}/{len(combinations)} failed: {e}")
                 continue
         
-        logger.info(f"    Best hyperparameters for {model_name}: {best_params} (MSE = {best_metrics['mse']:.4f})")
+        print(f"Best hyperparameters for {model_name}: {best_params} (MAE = {best_metrics['mae']:.4f})")
         return best_params, best_metrics
     
     def _evaluate_model_on_validation(self, validation_data: pd.DataFrame, 
@@ -381,14 +344,19 @@ class ValidationAgent:
             Dictionary with MSE, MAE, MAPE scores
         """
         try:
-            # Use entire validation data for evaluation
-            predictions = self._validate_and_predict(validation_data, model_name, hyperparameters)
+            # Split validation data
+            split_point = int(len(validation_data) * 0.8)
+            train_data = validation_data.iloc[:split_point]
+            test_data = validation_data.iloc[split_point:]
+                        
+            predictions = self._validate_and_predict(train_data, model_name, hyperparameters, len(test_data))
             
-            # Calculate metrics
-            actual_values = validation_data['value'].values
+            # Calculate metrics on the test portion (20% of validation data)
+            actual_values = test_data['value'].values
             
             # Ensure predictions and actual values have same length
             if len(predictions) != len(actual_values):
+                logger.warning(f"Predictions and actual values have different lengths: {len(predictions)} != {len(actual_values)}")
                 min_len = min(len(predictions), len(actual_values))
                 predictions = predictions[:min_len]
                 actual_values = actual_values[:min_len]
@@ -413,7 +381,7 @@ class ValidationAgent:
             }
     
     def _validate_and_predict(self, validation_data: pd.DataFrame,
-                          model_name: str, hyperparameters: Dict[str, Any]) -> List[float]:
+                          model_name: str, hyperparameters: Dict[str, Any], horizon: int = None) -> List[float]:
         """
         Train a model on validation data and make predictions with specific hyperparameters
         
@@ -421,6 +389,7 @@ class ValidationAgent:
             validation_data: Validation dataset
             model_name: Name of the model
             hyperparameters: Model hyperparameters (single parameter set)
+            horizon: Number of steps to predict (if None, predicts for entire validation data length)
             
         Returns:
             List of predictions
@@ -429,41 +398,26 @@ class ValidationAgent:
             # Prepare data
             values = validation_data['value'].values.reshape(-1, 1)
             
-            # Create features (simple lag features)
-            def create_features(data, max_lag=5):
-                features = []
-                for i in range(len(data)):
-                    row = []
-                    for lag in range(1, min(max_lag + 1, i + 1)):
-                        row.append(data[i - lag])
-                    # Pad with zeros if not enough history
-                    while len(row) < max_lag:
-                        row.insert(0, 0)
-                    features.append(row)
-                return np.array(features)
-            
             # Create features for the entire validation data
-            features = create_features(values.flatten())
             actual_values = values.flatten()
             
             # Train model with specific parameters
-            predictions = self._train_single_model(model_name, features, actual_values, hyperparameters)
+            predictions = self._train_single_model(model_name, actual_values, hyperparameters, horizon)
             
             if predictions is not None:
                 return predictions.tolist()
             else:
                 # Fallback to default parameters
                 logger.warning(f"Model training failed for {model_name}, using fallback")
-                fallback_predictions = self._train_single_model(model_name, features, actual_values, {})
+                fallback_predictions = self._train_single_model(model_name, actual_values, {}, horizon)
                 if fallback_predictions is not None:
                     return fallback_predictions.tolist()
                 else:
                     # Final fallback to simple predictions
                     logger.warning(f"Fallback model training also failed for {model_name}, using simple predictions")
-                    n_predictions = len(validation_data)
                     seed = hash(str(hyperparameters)) % 10000
                     np.random.seed(seed)
-                    predictions = np.linspace(0.3, 0.7, n_predictions) + np.random.normal(0, 0.1, n_predictions)
+                    predictions = np.linspace(0.3, 0.7, horizon) + np.random.normal(0, 0.1, horizon)
                     predictions = np.clip(predictions, 0, 1)
                     return predictions.tolist()
                 
@@ -477,8 +431,8 @@ class ValidationAgent:
             predictions = np.clip(predictions, 0, 1)
             return predictions.tolist()
     
-    def _train_single_model(self, model_name: str, features: np.ndarray, 
-                           actual_values: np.ndarray, params: Dict[str, Any]) -> np.ndarray:
+    def _train_single_model(self, model_name: str,
+                           actual_values: np.ndarray, params: Dict[str, Any], horizon: int) -> np.ndarray:
         """
         Train a single model with specific parameters using model library
         
@@ -487,6 +441,7 @@ class ValidationAgent:
             features: Feature matrix
             actual_values: Target values
             params: Model parameters
+            horizon: Number of steps to predict
             
         Returns:
             Predictions array
@@ -499,7 +454,6 @@ class ValidationAgent:
             data_dict = {'value': actual_values}
             
             # Call the model function with the data, parameters, and horizon
-            horizon = len(actual_values)  # Use all data for validation
             predictions = model_func(data_dict, params, horizon)
             
             return np.array(predictions)
@@ -519,9 +473,7 @@ class ValidationAgent:
             List of best models (top k_models)
         """
         # Protect against None input
-        if tested_models is None:
-            logger.error("tested_models is None in _select_best_models_from_testing")
-            return []
+
         
         if not tested_models:
             logger.warning("tested_models is empty in _select_best_models_from_testing")
@@ -539,119 +491,6 @@ class ValidationAgent:
             logger.info(f"  {model['model']}: MSE={metrics['mse']:.4f}, MAE={metrics['mae']:.4f}, MAPE={metrics['mape']:.2f}%")
         
         return best_models
-    
-    def validate_and_select_models(self, data: pd.DataFrame, analysis_result: Dict[str, Any], 
-                                 output_dir: str) -> Dict[str, Any]:
-        """
-        Execute the model validation and selection process
-        
-        Args:
-            data: Validation data
-            analysis_result: Analysis result
-            output_dir: Output directory
-            
-        Returns:
-            Validation and selection results
-        """
-        logger.info("Starting model validation and selection...")
-        
-        try:
-            # 1. Propose candidate models based on analysis results
-            # proposed_models = self._propose_models(analysis_result)
-            
-            # 2. Filter candidate models
-            # candidate_models = self._select_candidate_models(analysis_result, self.available_models)
-            
-            # 3. Optimize hyperparameters
-            optimization_results = self._optimize_hyperparameters(data, candidate_models)
-            
-            # 4. Cross-validate models
-            cv_results = self._cross_validate_models(data, optimization_results)
-            
-            # 5. Select best models
-            best_models = self._select_best_models(cv_results)
-            
-            # 6. Generate validation visualizations
-            validation_visualizations = self._generate_validation_visualizations(
-                cv_results, best_models, output_dir
-            )
-            
-            # 7. Save validation results
-            self._save_validation_results(
-                self.available_models, candidate_models, optimization_results,
-                cv_results, best_models, output_dir
-            )
-            
-            # 8. Update memory
-            self._update_memory(
-                self.available_models, candidate_models, optimization_results,
-                cv_results, best_models, validation_visualizations
-            )
-            
-            result = {
-                'model_library': self.available_models,
-                'candidate_models': candidate_models,
-                'optimization_results': optimization_results,
-                'cv_results': cv_results,
-                'best_models': best_models,
-                'best_hyperparameters': self._extract_best_hyperparameters(cv_results),
-                'visualizations': validation_visualizations
-            }
-            
-            logger.info(f"Model validation completed. Selected models: {best_models}")
-            return result
-            
-        except Exception as e:
-            logger.error(f"Model validation failed: {e}")
-            raise
-    
-    # def _propose_models(self, analysis_result: Dict[str, Any]) -> List[str]:
-    #     """Propose candidate models based on analysis results"""
-    #     logger.info("Proposing models based on analysis...")
-        
-    #     # Get data characteristics
-    #     data_characteristics = analysis_result.get('data_characteristics', {})
-    #     model_recommendations = analysis_result.get('model_recommendations', {})
-        
-    #     proposed_models = []
-        
-    #     # Based on recommended models
-    #     for col, recommendations in model_recommendations.items():
-    #         proposed_models.extend(recommendations[:3])  # Take top 3 recommendations for each feature
-        
-    #     # Remove duplicates and limit quantity
-    #     proposed_models = list(dict.fromkeys(proposed_models))
-    #     proposed_models = [model for model in proposed_models if model in self.available_models]
-        
-    #     # If recommended models are not enough, add default models
-    #     default_models = ['ARMA', 'LSTM', 'RandomForest', 'LinearRegression']
-    #     for model in default_models:
-    #         if model not in proposed_models and len(proposed_models) < self.n_proposed:
-    #             proposed_models.append(model)
-        
-    #     # Limit quantity
-    #     proposed_models = proposed_models[:self.n_proposed]
-        
-    #     logger.info(f"Proposed {len(proposed_models)} models: {proposed_models}")
-    #     return proposed_models
-    
-    # def _select_candidate_models(self, analysis_result: Dict[str, Any], model_library: List[str]) -> List[str]:
-    #     """Select candidate models"""
-    #     logger.info("Selecting candidate models...")
-        
-    #     # Based on data characteristics and model suitability score
-    #     model_scores = {}
-        
-    #     for model in model_library:
-    #         score = self._calculate_model_suitability_score(model, analysis_result)
-    #         model_scores[model] = score
-        
-    #     # Sort by score and select top n_candidates
-    #     sorted_models = sorted(model_scores.items(), key=lambda x: x[1], reverse=True)
-    #     candidate_models = [model for model, score in sorted_models[:self.n_candidates]]
-        
-    #     logger.info(f"Selected {len(candidate_models)} candidate models: {candidate_models}")
-    #     return candidate_models
     
     def _calculate_model_suitability_score(self, model: str, analysis_result: Dict[str, Any]) -> float:
         """Calculate model suitability score"""
@@ -687,52 +526,6 @@ class ValidationAgent:
         
         return score
     
-    def _optimize_hyperparameters(self, data: pd.DataFrame, candidate_models: List[str]) -> Dict[str, Any]:
-        """Optimize hyperparameters"""
-        logger.info("Optimizing hyperparameters...")
-        
-        optimization_results = {}
-        
-        for model in candidate_models:
-            try:
-                logger.info(f"Optimizing hyperparameters for {model}")
-                
-                # Get default parameters for the model
-                default_params = self._get_default_hyperparameters(model)
-                
-                # Get parameter search space
-                param_grid = self._get_parameter_grid(model)
-                
-                if param_grid:
-                    # Perform grid search
-                    best_params, best_score = self._grid_search_optimization(
-                        data, model, param_grid
-                    )
-                else:
-                    # Use default parameters
-                    best_params = default_params
-                    best_score = self._evaluate_model(data, model, default_params)
-                
-                optimization_results[model] = {
-                    'best_parameters': best_params,
-                    'best_score': best_score,
-                    'optimization_method': self.optimization_method
-                }
-                
-                logger.info(f"{model} optimization completed. Best score: {best_score:.4f}")
-                
-            except Exception as e:
-                logger.warning(f"Hyperparameter optimization failed for {model}: {e}")
-                # Use default parameters
-                default_params = self._get_default_hyperparameters(model)
-                optimization_results[model] = {
-                    'best_parameters': default_params,
-                    'best_score': float('inf'),
-                    'optimization_method': 'default'
-                }
-        
-        return optimization_results
-    
     def _get_default_hyperparameters(self, model: str) -> Dict[str, Any]:
         """Get default hyperparameters"""
         defaults = {
@@ -746,50 +539,10 @@ class ValidationAgent:
             'GradientBoosting': {'n_estimators': 100, 'learning_rate': 0.1, 'max_depth': 3},
             'XGBoost': {'n_estimators': 100, 'learning_rate': 0.1, 'max_depth': 3},
             'LightGBM': {'n_estimators': 100, 'learning_rate': 0.1, 'max_depth': 3},
-            'Prophet': {'changepoint_prior_scale': 0.05, 'seasonality_prior_scale': 10.0},
+            'Prophet': {'changepoint_prior_scale': 0.1, 'seasonality_prior_scale': 1.0, 'yearly_seasonality': True,'weekly_seasonality': True,'daily_seasonality': False,'seasonality_mode': 'additive'},
             'ExponentialSmoothing': {'trend': 'add', 'seasonal': 'add', 'seasonal_periods': 7}
         }
-        
         return defaults.get(model, {})
-    
-    def _get_parameter_grid(self, model: str) -> Dict[str, List]:
-        """Get parameter search space"""
-        grids = {
-            'ARMA': {
-                'p': [0, 1, 2],
-                'q': [0, 1, 2]
-            },
-            'ARIMA': {
-                'p': [0, 1, 2],
-                'q': [0, 1, 2],
-                'd': [0, 1]
-            },
-            'RandomForest': {
-                'n_estimators': [50, 100, 200],
-                'max_depth': [5, 10, 15]
-            },
-            'SVR': {
-                'C': [0.1, 1.0, 10.0],
-                'gamma': ['scale', 'auto']
-            },
-            'GradientBoosting': {
-                'n_estimators': [50, 100],
-                'learning_rate': [0.05, 0.1, 0.2],
-                'max_depth': [3, 5]
-            },
-            'XGBoost': {
-                'n_estimators': [50, 100],
-                'learning_rate': [0.05, 0.1, 0.2],
-                'max_depth': [3, 5]
-            },
-            'LightGBM': {
-                'n_estimators': [50, 100],
-                'learning_rate': [0.05, 0.1, 0.2],
-                'max_depth': [3, 5]
-            }
-        }
-        
-        return grids.get(model, {})
     
     def _grid_search_optimization(self, data: pd.DataFrame, model: str, param_grid: Dict[str, List]) -> Tuple[Dict, float]:
         """Perform grid search optimization"""
@@ -837,48 +590,6 @@ class ValidationAgent:
             logger.debug(f"Model evaluation failed: {e}")
             return float('inf')
     
-    def _cross_validate_models(self, data: pd.DataFrame, optimization_results: Dict[str, Any]) -> Dict[str, Any]:
-        """Cross-validate models"""
-        logger.info("Performing cross-validation...")
-        
-        cv_results = {}
-        
-        for model, opt_result in optimization_results.items():
-            try:
-                logger.info(f"Cross-validating {model}")
-                
-                # Time series cross-validation
-                tscv = TimeSeriesSplit(n_splits=self.cv_folds)
-                cv_scores = []
-                
-                for train_idx, val_idx in tscv.split(data):
-                    train_data = data.iloc[train_idx]
-                    val_data = data.iloc[val_idx]
-                    
-                    # Train and evaluate model
-                    score = self._evaluate_model_split(train_data, val_data, model, opt_result['best_parameters'])
-                    cv_scores.append(score)
-                
-                cv_results[model] = {
-                    'cv_scores': cv_scores,
-                    'mean_score': np.mean(cv_scores),
-                    'std_score': np.std(cv_scores),
-                    'best_parameters': opt_result['best_parameters']
-                }
-                
-                logger.info(f"{model} CV completed. Mean score: {np.mean(cv_scores):.4f}")
-                
-            except Exception as e:
-                logger.warning(f"Cross-validation failed for {model}: {e}")
-                cv_results[model] = {
-                    'cv_scores': [float('inf')],
-                    'mean_score': float('inf'),
-                    'std_score': float('inf'),
-                    'best_parameters': opt_result['best_parameters']
-                }
-        
-        return cv_results
-    
     def _evaluate_model_split(self, train_data: pd.DataFrame, val_data: pd.DataFrame, 
                             model: str, params: Dict[str, Any]) -> float:
         """Evaluate a single data split"""
@@ -905,46 +616,6 @@ class ValidationAgent:
         
         logger.info(f"Selected best models: {best_models}")
         return best_models
-    
-    def _extract_best_hyperparameters(self, cv_results: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
-        """Extract best hyperparameters"""
-        best_hyperparameters = {}
-        
-        for model, result in cv_results.items():
-            best_hyperparameters[model] = result['best_parameters']
-        
-        return best_hyperparameters
-    
-    def _generate_validation_visualizations(self, cv_results: Dict[str, Any], 
-                                          best_models: List[str], output_dir: str) -> Dict[str, str]:
-        """Generate validation visualizations"""
-        logger.info("Generating validation visualizations...")
-        
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
-        
-        visualizations = {}
-        
-        try:
-            # 1. Model performance comparison plot
-            performance_plot_path = output_path / "model_performance.png"
-            visualizations['model_performance'] = self._plot_model_performance(
-                cv_results, str(performance_plot_path)
-            )
-            
-            # 2. Cross-validation results plot
-            cv_plot_path = output_path / "cross_validation.png"
-            visualizations['cross_validation'] = self._plot_cross_validation(
-                cv_results, str(cv_plot_path)
-            )
-            
-            logger.info(f"Generated {len(visualizations)} validation visualizations")
-            
-        except Exception as e:
-            logger.error(f"Validation visualization generation failed: {e}")
-            visualizations = {}
-        
-        return visualizations
     
     def _plot_model_performance(self, cv_results: Dict[str, Any], save_path: str) -> str:
         """Plot model performance comparison"""
@@ -1005,73 +676,3 @@ class ValidationAgent:
         except Exception as e:
             logger.error(f"Cross-validation plot failed: {e}")
             return ""
-    
-    def _save_validation_results(self, proposed_models: List[str], candidate_models: List[str],
-                               optimization_results: Dict[str, Any], cv_results: Dict[str, Any],
-                               best_models: List[str], output_dir: str):
-        """Save validation results"""
-        logger.info("Saving validation results...")
-        
-        output_path = Path(output_dir)
-        
-        # Save validation report
-        from utils.file_utils import FileSaver
-        validation_report = {
-            'proposed_models': proposed_models,
-            'candidate_models': candidate_models,
-            'optimization_results': optimization_results,
-            'cv_results': cv_results,
-            'best_models': best_models,
-            'best_hyperparameters': self._extract_best_hyperparameters(cv_results)
-        }
-        
-        report_path = output_path / "validation_report.json"
-        FileSaver.save_json(validation_report, report_path)
-        logger.info(f"Validation report saved to {report_path}")
-    
-    def _update_memory(self, proposed_models: List[str], candidate_models: List[str],
-                      optimization_results: Dict[str, Any], cv_results: Dict[str, Any],
-                      best_models: List[str], visualizations: Dict[str, str]):
-        """Update memory"""
-        self.memory.store('proposed_models', proposed_models, 'models')
-        self.memory.store('candidate_models', candidate_models, 'models')
-        self.memory.store('optimization_results', optimization_results, 'models')
-        self.memory.store('cv_results', cv_results, 'models')
-        self.memory.store('best_models', best_models, 'models')
-        self.memory.store('best_hyperparameters', self._extract_best_hyperparameters(cv_results), 'models')
-        self.memory.store('validation_visualizations', visualizations, 'visualizations')
-        
-        # Record validation history
-        self.memory.add_history(
-            'validation',
-            {
-                'proposed_models_count': len(proposed_models),
-                'candidate_models_count': len(candidate_models),
-                'best_models': best_models,
-                'visualization_count': len(visualizations)
-            }
-        )
-    
-    def get_validation_summary(self) -> Dict[str, Any]:
-        """Get validation summary"""
-        best_models = self.memory.retrieve('best_models', 'models')
-        cv_results = self.memory.retrieve('cv_results', 'models')
-        
-        if not best_models or not cv_results:
-            return {}
-        
-        summary = {
-            'best_models': best_models,
-            'model_performance': {}
-        }
-        
-        for model in best_models:
-            if model in cv_results:
-                result = cv_results[model]
-                summary['model_performance'][model] = {
-                    'mean_score': result['mean_score'],
-                    'std_score': result['std_score'],
-                    'cv_scores': result['cv_scores']
-                }
-        
-        return summary 
