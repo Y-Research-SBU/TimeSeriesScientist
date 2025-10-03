@@ -29,7 +29,7 @@
   </p>
   
   <p align="center">
-    <a href="https://github.com/Y-Research-SBU/TimeSeriesScientist">
+    <a href="https://arxiv.org/abs/2510.01538">
       <img src="https://img.shields.io/badge/ArXiv-2508.17188-red?style=flat-square&logo=arxiv" alt="Paper">
     </a>
     <a href="https://Y-Research-SBU.github.io/TimeSeriesScientist">
