@@ -9,6 +9,7 @@ from typing import Dict, Any, Tuple, Optional
 import logging
 from pathlib import Path
 import json
+from datetime import datetime
 
 from utils.data_utils import DataLoader, DataPreprocessor, DataValidator, DataAnalyzer
 from utils.visualization_utils import TimeSeriesVisualizer
@@ -16,6 +17,7 @@ from agents.memory import ExperimentMemory
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 PREPROCESS_SYSTEM_PROMPT = """
@@ -94,11 +96,11 @@ class PreprocessAgent:
             # max_tokens=4000,
         )
         self.tools = PreprocessLLMTools(self.llm)
-        self.config = config or {}
+        self.config = config
         self.visualizer = TimeSeriesVisualizer(self.config)
         
         # Get preprocessing configuration
-        self.preprocess_config = config.get('preprocess', {})
+        self.preprocess_config = config.get('preprocess')
         # self.outlier_method = self.preprocess_config.get('outlier_method', 'iqr')
         self.outlier_threshold = self.preprocess_config.get('outlier_threshold', 1.5)
         
@@ -118,6 +120,9 @@ class PreprocessAgent:
             Preprocessing result dictionary
         """
         logger.info("Starting data preprocessing...")
+        
+        # Debug: Print data index information
+        logger.info(f"Input data index range: {data.index.min()} to {data.index.max()}")
         
         try:
             # 1. Data validation
@@ -184,9 +189,6 @@ class PreprocessAgent:
         
         # Add small delay to avoid rate limiting
         time.sleep(0.5)
-        
-        if output_dir is None:
-            output_dir = "results/preprocess"
         
         return self.process(data, output_dir)
     
@@ -728,24 +730,39 @@ IMPORTANT: Return ONLY the JSON object below, with NO markdown formatting, NO co
         try:
             import matplotlib.pyplot as plt
             
-            plt.figure(figsize=(12, 6))
+            plt.figure(figsize=(12, 6), facecolor='white')
             
             for col in data.columns:
-                plt.plot(data.index, data[col], label=col, linewidth=1)
+                plt.plot(data.index, data[col], label=col, linewidth=2,color='#750014')
             
-            plt.title(config.get('title', 'Time Series Plot'))
+            # plt.title(config.get('title', 'Time Series Plot'))
             plt.xlabel(config.get('xlabel', 'Time'))
             plt.ylabel(config.get('ylabel', 'Value'))
             plt.legend()
-            plt.grid(True)
+            # plt.grid(True)
+
+            ax = plt.gca()
+            ax.set_facecolor("white")
+            ax.grid(True, which="major", linestyle="--", linewidth=0.5, color="black", alpha=0.3)  # 添加格子
+            ax.grid(True, which="minor", linestyle=":", linewidth=0.3, color="black", alpha=0.2)   # 次级格子
+
+            # 增大字体
+            plt.title(config.get('title', 'Time Series Plot'), fontsize=16, fontweight='bold')
+            plt.xlabel(config.get('xlabel', 'Time'), fontsize=14, fontweight='bold')
+            plt.ylabel(config.get('ylabel', 'Value'), fontsize=14, fontweight='bold')
+            
+            # 增大刻度标签字体
+            plt.tick_params(axis='x', labelsize=12)
+            plt.tick_params(axis='y', labelsize=12)
+
             
             # Add additional elements as specified by LLM
             additional_elements = config.get('additional_elements', [])
             if 'rotate_x_labels' in additional_elements:
                 plt.xticks(rotation=45)
             
-            save_path = output_path / f"{config.get('name', 'time_series')}.png"
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            save_path = output_path / f"{config.get('name', 'time_series_plot')}.png"
+            plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white')
             plt.close()
             
             return str(save_path)
@@ -760,33 +777,41 @@ IMPORTANT: Return ONLY the JSON object below, with NO markdown formatting, NO co
             import matplotlib.pyplot as plt
             import seaborn as sns
             
-            fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+            fig, axes = plt.subplots(2, 2, figsize=(15, 10), facecolor='white')
             
             # Time series plot
-            axes[0, 0].plot(data.index, data['value'], linewidth=1)
+            axes[0, 0].plot(data.index, data['value'], linewidth=2, color='#750014')
             axes[0, 0].set_title('Time Series')
             axes[0, 0].set_xlabel('Time')
             axes[0, 0].set_ylabel('Value')
             axes[0, 0].tick_params(axis='x', rotation=45)
-            
+            axes[0, 0].set_facecolor("white")
+            axes[0, 0].grid(True, which="major", linestyle="-", linewidth=0.5, color="black", alpha=0.3)
+        
             # Histogram with KDE
             sns.histplot(data['value'].dropna(), kde=True, ax=axes[0, 1], bins=30)
             axes[0, 1].set_title('Value Distribution')
             axes[0, 1].set_xlabel('Value')
             axes[0, 1].set_ylabel('Frequency')
+            axes[0, 1].set_facecolor("white")
+            axes[0, 1].grid(True, which="major", linestyle="-", linewidth=0.5, color="black", alpha=0.3)
             
             # Box plot
             axes[1, 0].boxplot(data['value'].dropna())
             axes[1, 0].set_title('Value Box Plot')
             axes[1, 0].set_ylabel('Value')
-            
+            axes[1, 0].set_facecolor("white")
+            axes[1, 0].grid(True, which="major", linestyle="-", linewidth=0.5, color="black", alpha=0.3)
+
             # Q-Q plot
             from scipy import stats
             stats.probplot(data['value'].dropna(), dist="norm", plot=axes[1, 1])
             axes[1, 1].set_title('Q-Q Plot')
-            
+            axes[1, 1].set_facecolor("white")
+            axes[1, 1].grid(True, which="major", linestyle="-", linewidth=0.5, color="black", alpha=0.3)
+
             plt.tight_layout()
-            save_path = output_path / f"{config.get('name', 'distribution')}.png"
+            save_path = output_path / f"{config.get('name', 'data_distribution')}.png"
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             plt.close()
             
@@ -803,20 +828,35 @@ IMPORTANT: Return ONLY the JSON object below, with NO markdown formatting, NO co
             
             window_size = config.get('plot_specific_params', {}).get('window_size', 24)
             
-            plt.figure(figsize=(12, 6))
+            plt.figure(figsize=(12, 6), facecolor='white')
             
             for col in data.columns:
                 rolling_mean = data[col].rolling(window=window_size).mean()
                 rolling_std = data[col].rolling(window=window_size).std()
                 
-                plt.plot(data.index, rolling_mean, label=f'{col} - Rolling Mean')
-                plt.plot(data.index, rolling_std, label=f'{col} - Rolling Std', alpha=0.7)
+                plt.plot(data.index, rolling_mean, label=f'{col} - Rolling Mean', linewidth=2, color='#750014')
+                plt.plot(data.index, rolling_std, label=f'{col} - Rolling Std', alpha=0.7, linewidth=2, color='#333333')
             
-            plt.title(config.get('title', f'Rolling Statistics (Window={window_size})'))
+            # plt.title(config.get('title', f'Rolling Statistics (Window={window_size})'))
             plt.xlabel(config.get('xlabel', 'Time'))
             plt.ylabel(config.get('ylabel', 'Value'))
             plt.legend()
-            plt.grid(True)
+            # plt.grid(True)
+            # 设置白色背景和黑色网格
+            ax = plt.gca()
+            ax.set_facecolor("white")
+            ax.grid(True, which="major", linestyle="-", linewidth=0.5, color="black", alpha=0.3)
+            ax.grid(True, which="minor", linestyle=":", linewidth=0.3, color="black", alpha=0.2)
+
+            # 增大字体
+            plt.title(config.get('title', f'Rolling Statistics (Window={window_size})'), fontsize=16, fontweight='bold')
+            plt.xlabel(config.get('xlabel', 'Time'), fontsize=14, fontweight='bold')
+            plt.ylabel(config.get('ylabel', 'Value'), fontsize=14, fontweight='bold')
+            
+            # 增大刻度标签字体
+            plt.tick_params(axis='x', labelsize=12)
+            plt.tick_params(axis='y', labelsize=12)
+        
             
             save_path = output_path / f"{config.get('name', 'rolling_stats')}.png"
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -834,12 +874,30 @@ IMPORTANT: Return ONLY the JSON object below, with NO markdown formatting, NO co
             import matplotlib.pyplot as plt
             from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
             
-            fig, axes = plt.subplots(2, 1, figsize=(12, 8))
+            fig, axes = plt.subplots(2, 1, figsize=(12, 8), facecolor='white')
             
             for col in data.columns:
-                plot_acf(data[col].dropna(), ax=axes[0], lags=40, title=f'ACF - {col}')
-                plot_pacf(data[col].dropna(), ax=axes[1], lags=40, title=f'PACF - {col}')
-            
+                plot_acf(data[col].dropna(), ax=axes[0], lags=40, title='', linewidth=2, color='#750014')
+                plot_pacf(data[col].dropna(), ax=axes[1], lags=40, title='', linewidth=2, color='#750014')
+
+                for ax in axes:
+                    ax.set_facecolor("white")
+                    ax.grid(True, which="major", linestyle="-", linewidth=0.5, color="black", alpha=0.3)
+                    ax.grid(True, which="minor", linestyle=":", linewidth=0.3, color="black", alpha=0.2)
+
+                    ax.set_title(ax.get_title(), fontsize=16, fontweight='bold')
+                    ax.set_xlabel(ax.get_xlabel(), fontsize=14, fontweight='bold')
+                    ax.set_ylabel(ax.get_ylabel(), fontsize=14, fontweight='bold')
+                    
+                    ax.tick_params(axis='x', labelsize=12)
+                    ax.tick_params(axis='y', labelsize=12)
+
+                    for line in ax.get_lines():
+                        line.set_color('#750014')
+                    for collection in ax.collections:
+                        collection.set_color('#750014')
+                        collection.set_edgecolor('#750014')
+        
             plt.tight_layout()
             save_path = output_path / f"{config.get('name', 'autocorrelation')}.png"
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -859,15 +917,25 @@ IMPORTANT: Return ONLY the JSON object below, with NO markdown formatting, NO co
             
             period = config.get('plot_specific_params', {}).get('period', 12)
             
-            fig, axes = plt.subplots(4, 1, figsize=(12, 10))
+            fig, axes = plt.subplots(4, 1, figsize=(12, 10), facecolor='white')
             
             for col in data.columns:
                 decomposition = seasonal_decompose(data[col].dropna(), period=period, extrapolate_trend='freq')
                 
-                decomposition.observed.plot(ax=axes[0], title='Original')
-                decomposition.trend.plot(ax=axes[1], title='Trend')
-                decomposition.seasonal.plot(ax=axes[2], title='Seasonal')
-                decomposition.resid.plot(ax=axes[3], title='Residual')
+                decomposition.observed.plot(ax=axes[0], linewidth=2, color='#750014')
+                decomposition.trend.plot(ax=axes[1], linewidth=2, color='#750014')
+                decomposition.seasonal.plot(ax=axes[2], linewidth=2, color='#750014')
+                decomposition.resid.plot(ax=axes[3], linewidth=2, color='#750014')
+                for ax in axes:
+                    ax.set_facecolor("white")
+                    ax.grid(True, which="major", linestyle="-", linewidth=0.5, color="black", alpha=0.3)
+                    ax.grid(True, which="minor", linestyle=":", linewidth=0.3, color="black", alpha=0.2)
+                    ax.set_title(ax.get_title(), fontsize=16, fontweight='bold')
+                    ax.set_xlabel(ax.get_xlabel(), fontsize=14, fontweight='bold')
+                    ax.set_ylabel(ax.get_ylabel(), fontsize=14, fontweight='bold')
+                    
+                    ax.tick_params(axis='x', labelsize=12)
+                    ax.tick_params(axis='y', labelsize=12)
             
             plt.tight_layout()
             save_path = output_path / f"{config.get('name', 'seasonal_decomposition')}.png"
@@ -896,6 +964,7 @@ IMPORTANT: Return ONLY the JSON object below, with NO markdown formatting, NO co
         logger.info("Saving preprocessing results...")
         
         output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
         
         # Save cleaned data
         data_path = output_path / "cleaned_data.csv"
@@ -907,6 +976,26 @@ IMPORTANT: Return ONLY the JSON object below, with NO markdown formatting, NO co
         report_path = output_path / "analysis_report.json"
         FileSaver.save_json(analysis_report, report_path)
         logger.info(f"Analysis report saved to {report_path}")
+        
+        # Save preprocess summary
+        summary = {
+            'data_shape': data.shape,
+            'data_columns': list(data.columns),
+            'data_types': data.dtypes.to_dict(),
+            'missing_values': data.isnull().sum().to_dict(),
+            'basic_stats': {
+                'mean': data['value'].mean(),
+                'std': data['value'].std(),
+                'min': data['value'].min(),
+                'max': data['value'].max(),
+                'median': data['value'].median()
+            },
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        summary_path = output_path / "preprocess_summary.json"
+        FileSaver.save_json(summary, summary_path)
+        logger.info(f"Preprocess summary saved to {summary_path}")
     
     def _update_memory(self, data: pd.DataFrame, analysis_report: Dict[str, Any], visualizations: Dict[str, str]):
         """Update memory"""
