@@ -385,3 +385,16 @@ For questions, feedback, or collaboration opportunities, please contact:
 ## License
 
 MIT License
+
+## Citation
+```
+@misc{zhao2025timeseriesscientistgeneralpurposeaiagent,
+      title={TimeSeriesScientist: A General-Purpose AI Agent for Time Series Analysis}, 
+      author={Haokun Zhao and Xiang Zhang and Jiaqi Wei and Yiwei Xu and Yuting He and Siqi Sun and Chenyu You},
+      year={2025},
+      eprint={2510.01538},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2510.01538}, 
+}
+```
