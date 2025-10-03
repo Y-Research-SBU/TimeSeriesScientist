@@ -19,6 +19,7 @@ from utils.model_library import MODEL_FUNCTIONS, get_model_function
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 FORECAST_SYSTEM_PROMPT = """
@@ -92,14 +93,17 @@ class ForecastAgent:
         # Store model functions from library
         self.model_functions = MODEL_FUNCTIONS
 
-    def run(self, selected_models: list, best_hyperparameters: dict, test_data: pd.DataFrame):
+    def run(self, selected_models: list, best_hyperparameters: dict, validation_data: pd.DataFrame, test_data: pd.DataFrame, output_dir: str = None, validation_metrics: dict = None):
         """
-        Run the forecast agent to generate predictions on test data and calculate metrics
+        Run the forecast agent to generate predictions using validation data and calculate metrics against test data
         
         Args:
             selected_models: List of selected model names
             best_hyperparameters: Dictionary of best hyperparameters for each model
+            validation_data: Validation dataset for training models
             test_data: Test dataset for final evaluation
+            output_dir: Output directory for saving results
+            validation_metrics: Dictionary containing validation metrics (MAE, MSE, MAPE) for each model
             
         Returns:
             Dictionary containing individual predictions, ensemble predictions, and metrics
@@ -109,9 +113,9 @@ class ForecastAgent:
         # Add small delay to avoid rate limiting
         time.sleep(0.5)
         
-        logger.info(f"Starting forecast on test data with {len(selected_models)} models")
+        logger.info(f"Starting forecast using validation data with {len(selected_models)} models")
         
-        # Generate individual model predictions on test data
+        # Generate individual model predictions using validation data
         individual_predictions = {}
         for model_name in selected_models:
             try:
@@ -120,7 +124,7 @@ class ForecastAgent:
                 
                 # Get model function and generate predictions
                 model_func = get_model_function(model_name)
-                data_dict = {'value': test_data['value'].values}
+                data_dict = {'value': validation_data['value'].values}
                 horizon = len(test_data)
                 
                 predictions = model_func(data_dict, hyperparams, horizon)
@@ -134,8 +138,21 @@ class ForecastAgent:
                 fallback_predictions = self._generate_fallback_predictions(test_data)
                 individual_predictions[model_name] = fallback_predictions
         
+        # Extract validation MAE from validation_metrics
+        validation_mae = {}
+        if validation_metrics:
+            for model_name in selected_models:
+                if model_name in validation_metrics:
+                    if isinstance(validation_metrics[model_name], dict) and 'mae' in validation_metrics[model_name]:
+                        validation_mae[model_name] = validation_metrics[model_name]['mae']
+                    else:
+                        # If validation_metrics[model_name] is directly the MAE value
+                        validation_mae[model_name] = validation_metrics[model_name]
+        
+        logger.info(f"Validation MAE data: {validation_mae}")
+        
         # Generate ensemble predictions
-        ensemble_predictions = self._generate_ensemble_predictions(individual_predictions)
+        ensemble_predictions = self._generate_ensemble_predictions(individual_predictions, validation_mae)
         
         # Calculate forecast metrics
         forecast_metrics = self._calculate_forecast_metrics(individual_predictions, ensemble_predictions)
@@ -147,10 +164,9 @@ class ForecastAgent:
         confidence_intervals = self._generate_confidence_intervals(individual_predictions, ensemble_predictions)
         
         # Generate visualizations
-        output_dir = "results/forecast"
         visualizations = self._generate_forecast_visualizations(
-            test_data, individual_predictions, ensemble_predictions, 
-            confidence_intervals, len(test_data), output_dir
+            validation_data, individual_predictions, ensemble_predictions, 
+            confidence_intervals, test_data, output_dir
         )
         
         # Save results
@@ -192,7 +208,7 @@ class ForecastAgent:
         
         return predictions
     
-    def _generate_ensemble_predictions(self, individual_predictions: Dict[str, List[float]]) -> Dict[str, Any]:
+    def _generate_ensemble_predictions(self, individual_predictions: Dict[str, List[float]], validation_mae: Dict[str, float] = None) -> Dict[str, Any]:
         """Generate ensemble predictions"""
         logger.info("Generating ensemble predictions...")
         
@@ -207,8 +223,8 @@ class ForecastAgent:
         # Simple average
         ensemble_results['simple_average'] = np.mean(predictions_array, axis=0).tolist()
         
-        # Weighted average (based on model performance)
-        weights = self._calculate_model_weights(individual_predictions)
+        # Weighted average (based on model performance using LLM)
+        weights = self._calculate_model_weights(individual_predictions, validation_mae)
         weighted_avg = np.average(predictions_array, axis=0, weights=weights)
         ensemble_results['weighted_average'] = weighted_avg.tolist()
         
@@ -218,21 +234,161 @@ class ForecastAgent:
         # Trimmed mean
         ensemble_results['trimmed_mean'] = self._calculate_trimmed_mean(predictions_array)
         
-        # Select main ensemble method (use simple average as default)
-        main_ensemble = ensemble_results.get('simple_average', ensemble_results['simple_average'])
+        # Select main ensemble method (use weighted average if validation_mae available, otherwise simple average)
+        if validation_mae:
+            main_ensemble = ensemble_results['weighted_average']
+            method_used = 'weighted_average'
+        else:
+            main_ensemble = ensemble_results['simple_average']
+            method_used = 'simple_average'
         
         return {
             'predictions': main_ensemble,
             'all_methods': ensemble_results,
-            'method_used': 'simple_average'
+            'method_used': method_used,
+            'weights_used': dict(zip(individual_predictions.keys(), weights)) if validation_mae else None
         }
     
-    def _calculate_model_weights(self, individual_predictions: Dict[str, List[float]]) -> List[float]:
-        """Calculate model weights"""
-        # This should calculate weights based on model performance
-        # For now, use uniform weights
-        n_models = len(individual_predictions)
-        return [1.0 / n_models] * n_models
+    def _calculate_model_weights(self, individual_predictions: Dict[str, List[float]], validation_mae: Dict[str, float]) -> List[float]:
+        """Calculate model weights using LLM based on validation MAE performance"""
+        # logger.info("Calculating model weights using LLM...")
+        
+        if not individual_predictions or not validation_mae:
+            # Fallback to uniform weights
+            n_models = len(individual_predictions)
+            return [1.0 / n_models] * n_models
+        
+        # Prepare model performance data for LLM
+        model_performance = {}
+        for model_name in individual_predictions.keys():
+            if model_name in validation_mae:
+                model_performance[model_name] = {
+                    'mae': validation_mae[model_name],
+                    'predictions_count': len(individual_predictions[model_name])
+                }
+        
+        if not model_performance:
+            logger.warning("No validation MAE data available, using uniform weights")
+            n_models = len(individual_predictions)
+            return [1.0 / n_models] * n_models
+        
+        # Create prompt for LLM weight assignment
+        prompt = f"""
+You are an expert time series forecasting analyst. You need to assign weights to {len(model_performance)} models based on their validation performance.
+
+**Model Performance on Validation Set:**
+{json.dumps(model_performance, indent=2)}
+
+**Your Task:**
+Analyze the validation MAE (Mean Absolute Error) for each model and assign appropriate weights for ensemble forecasting. Consider:
+1. Lower MAE indicates better performance - these models should get higher weights
+2. Weights should sum to 1.0
+3. No model should get a weight of 0 (unless it completely failed)
+4. Consider the relative performance differences between models
+
+**Weight Assignment Guidelines:**
+- Models with lower MAE should get higher weights
+- The best performing model should get the highest weight
+- Weights should be proportional to performance but not necessarily linear
+- Consider giving some weight even to poorer performing models for diversity
+
+**Return your decision in JSON format:**
+{{
+    "weights": {{
+        "model_name": float (weight between 0 and 1)
+    }},
+    "reasoning": "string (explain your weight assignment strategy)",
+    "total_weight": float (should be 1.0)
+}}
+
+**Example Response:**
+{{
+    "weights": {{
+        "ModelA": 0.4,
+        "ModelB": 0.35,
+        "ModelC": 0.25
+    }},
+    "reasoning": "ModelA has the lowest MAE and shows consistent performance, ModelB is second best, ModelC has higher error but still contributes to ensemble diversity.",
+    "total_weight": 1.0
+}}
+
+IMPORTANT: Ensure the sum of all weights equals exactly 1.0.
+"""
+        
+        try:
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            logger.info(f"LLM response for weight calculation: {response.content}")
+            
+            # Extract weights from LLM response
+            weight_decision = self._extract_weights_from_response(response.content, list(model_performance.keys()))
+            
+            # Convert to list format in the same order as individual_predictions
+            weights_list = []
+            for model_name in individual_predictions.keys():
+                if model_name in weight_decision:
+                    weights_list.append(weight_decision[model_name])
+                else:
+                    # Fallback weight for models not in validation_mae
+                    weights_list.append(0.1)
+            
+            # Normalize weights to sum to 1.0
+            total_weight = sum(weights_list)
+            if total_weight > 0:
+                weights_list = [w / total_weight for w in weights_list]
+            else:
+                # Fallback to uniform weights
+                n_models = len(individual_predictions)
+                weights_list = [1.0 / n_models] * n_models
+            
+            logger.info(f"Calculated weights: {dict(zip(individual_predictions.keys(), weights_list))}")
+            return weights_list
+            
+        except Exception as e:
+            logger.warning(f"Failed to calculate weights using LLM: {e}, using uniform weights")
+            n_models = len(individual_predictions)
+            return [1.0 / n_models] * n_models
+    
+    def _extract_weights_from_response(self, response_content: str, model_names: List[str]) -> Dict[str, float]:
+        """Extract weights from LLM response"""
+        try:
+            # Try to extract JSON from response
+            import re
+            import json
+            
+            # Look for JSON pattern in the response
+            json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
+            if json_match:
+                json_str = json_match.group()
+                weight_data = json.loads(json_str)
+                
+                if 'weights' in weight_data:
+                    weights = weight_data['weights']
+                    # Validate weights
+                    for model_name in model_names:
+                        if model_name not in weights:
+                            weights[model_name] = 0.1  # Default weight
+                        elif weights[model_name] < 0:
+                            weights[model_name] = 0.1  # Ensure non-negative
+                    
+                    return weights
+            
+            # Fallback: try to extract weights using regex
+            weights = {}
+            for model_name in model_names:
+                # Look for pattern like "ModelA": 0.4 or "ModelA":0.4
+                pattern = rf'"{model_name}"\s*:\s*([0-9]*\.?[0-9]+)'
+                match = re.search(pattern, response_content)
+                if match:
+                    weights[model_name] = float(match.group(1))
+                else:
+                    weights[model_name] = 0.1  # Default weight
+            
+            return weights
+            
+        except Exception as e:
+            logger.warning(f"Failed to extract weights from response: {e}")
+            # Return uniform weights as fallback
+            return {model_name: 1.0 / len(model_names) for model_name in model_names}
     
     def _calculate_trimmed_mean(self, predictions_array: np.ndarray, trim_percent: float = 0.1) -> List[float]:
         """Calculate trimmed mean"""
@@ -382,9 +538,9 @@ class ForecastAgent:
         
         return confidence_intervals
     
-    def _generate_forecast_visualizations(self, data: pd.DataFrame, individual_predictions: Dict[str, List[float]],
-                                        ensemble_predictions: Dict[str, Any], confidence_intervals: Dict[str, Any],
-                                        horizon: int, output_dir: str) -> Dict[str, str]:
+    def _generate_forecast_visualizations(self, validation_data: pd.DataFrame, individual_predictions: Dict[str, Any],
+                                       ensemble_predictions: Dict[str, Any], confidence_intervals: Dict[str, Any],
+                                       test_data: pd.DataFrame, output_dir: str) -> Dict[str, str]:
         """Generate forecast visualizations"""
         logger.info("Generating forecast visualizations...")
         
@@ -394,22 +550,32 @@ class ForecastAgent:
         visualizations = {}
         
         try:
+            # Determine which predictions to use for visualization
+            if isinstance(individual_predictions, dict) and 'original_scale' in individual_predictions:
+                # Use original scale predictions if available
+                viz_individual_predictions = individual_predictions['original_scale']
+                viz_ensemble_predictions = ensemble_predictions['original_scale']
+            else:
+                # Use standardized predictions
+                viz_individual_predictions = individual_predictions
+                viz_ensemble_predictions = ensemble_predictions
+            
             # 1. Forecast comparison plot
             comparison_plot_path = output_path / "forecast_comparison.png"
             visualizations['forecast_comparison'] = self._plot_forecast_comparison(
-                data, individual_predictions, ensemble_predictions, str(comparison_plot_path)
+                validation_data, viz_individual_predictions, viz_ensemble_predictions, test_data, str(comparison_plot_path)
             )
             
-            # 2. Ensemble forecast with confidence intervals
+            # 2. Ensemble forecast plot
             ensemble_plot_path = output_path / "ensemble_forecast.png"
             visualizations['ensemble_forecast'] = self._plot_ensemble_forecast(
-                data, individual_predictions, ensemble_predictions, confidence_intervals, str(ensemble_plot_path)
+                validation_data, viz_individual_predictions, viz_ensemble_predictions, confidence_intervals, test_data, str(ensemble_plot_path)
             )
             
             # 3. Forecast distribution plot
             distribution_plot_path = output_path / "forecast_distribution.png"
             visualizations['forecast_distribution'] = self._plot_forecast_distribution(
-                individual_predictions, str(distribution_plot_path)
+                viz_individual_predictions, str(distribution_plot_path)
             )
             
             logger.info(f"Generated {len(visualizations)} forecast visualizations")
@@ -420,30 +586,66 @@ class ForecastAgent:
         
         return visualizations
     
-    def _plot_forecast_comparison(self, data: pd.DataFrame, individual_predictions: Dict[str, List[float]],
-                                ensemble_predictions: Dict[str, Any], save_path: str) -> str:
+    def _plot_forecast_comparison(self, validation_data: pd.DataFrame, individual_predictions: Dict[str, List[float]],
+                                ensemble_predictions: Dict[str, Any], test_data: pd.DataFrame, save_path: str) -> str:
         """Plot forecast comparison"""
         try:
             import matplotlib.pyplot as plt
             
             fig, ax = plt.subplots(figsize=(15, 8))
             
-            # Plot historical data
-            ax.plot(data.index, data['value'], 'b-', label='Historical Data', linewidth=2)
+            # Plot validation data as historical data
+            ax.plot(validation_data.index, validation_data['value'], 'b-', label='Input Data', linewidth=2)
             
+            # Plot validation data as actual values
+            ax.plot(test_data.index, test_data['value'], 'g-', label='Test Data', linewidth=2)
+            test_index = test_data.index
             # Plot individual model predictions
             colors = plt.cm.Set3(np.linspace(0, 1, len(individual_predictions)))
             for i, (model, predictions) in enumerate(individual_predictions.items()):
-                forecast_index = range(len(data), len(data) + len(predictions))
-                ax.plot(forecast_index, predictions, '--', color=colors[i], 
-                       label=f'{model}', alpha=0.7, linewidth=1.5)
+                # 使用test_data的时间索引，但只取预测长度
+                if len(predictions) <= len(test_index):
+                    model_forecast_index = test_index[:len(predictions)]
+                else:
+                    # 如果预测长度超过测试数据长度，扩展时间索引
+                    if hasattr(test_index, 'freq') and test_index.freq is not None:
+                        last_date = test_index[-1]
+                        extended_dates = pd.date_range(start=last_date + test_index.freq, 
+                                                    periods=len(predictions) - len(test_index), 
+                                                    freq=test_index.freq)
+                        model_forecast_index = test_index.union(extended_dates)
+                    else:
+                        # 如果没有频率信息，使用数值索引
+                        extended_index = pd.RangeIndex(start=len(test_index), 
+                                                    stop=len(test_index) + len(predictions) - len(test_index))
+                        model_forecast_index = test_index.union(extended_index)
+                
+                ax.plot(model_forecast_index, predictions, '--', color=colors[i], 
+                    label=f'{model}', alpha=0.7, linewidth=1.5)
             
             # Plot ensemble prediction
             if ensemble_predictions:
                 ensemble_pred = ensemble_predictions['predictions']
-                forecast_index = range(len(data), len(data) + len(ensemble_pred))
-                ax.plot(forecast_index, ensemble_pred, 'r-', label='Ensemble', 
-                       linewidth=3, alpha=0.9)
+                # 使用test_data的时间索引，但只取预测长度
+                if len(ensemble_pred) <= len(test_index):
+                    ensemble_forecast_index = test_index[:len(ensemble_pred)]
+                else:
+                    # 如果预测长度超过测试数据长度，扩展时间索引
+                    if hasattr(test_index, 'freq') and test_index.freq is not None:
+                        last_date = test_index[-1]
+                        extended_dates = pd.date_range(start=last_date + test_index.freq, 
+                                                    periods=len(ensemble_pred) - len(test_index), 
+                                                    freq=test_index.freq)
+                        ensemble_forecast_index = test_index.union(extended_dates)
+                    else:
+                        # 如果没有频率信息，使用数值索引
+                        extended_index = pd.RangeIndex(start=len(test_index), 
+                                                    stop=len(test_index) + len(ensemble_pred) - len(test_index))
+                        ensemble_forecast_index = test_index.union(extended_index)
+                
+                ax.plot(ensemble_forecast_index, ensemble_pred, 'r-', label='Ensemble', 
+                    linewidth=3, alpha=0.9)
+
             
             ax.set_title('Time Series Forecast Comparison', fontweight='bold', fontsize=14)
             ax.set_xlabel('Time')
@@ -461,43 +663,109 @@ class ForecastAgent:
             logger.error(f"Forecast comparison plot failed: {e}")
             return ""
     
-    def _plot_ensemble_forecast(self, data: pd.DataFrame, individual_predictions: Dict[str, List[float]],
+    def _plot_ensemble_forecast(self, validation_data: pd.DataFrame, individual_predictions: Dict[str, List[float]],
                               ensemble_predictions: Dict[str, Any], confidence_intervals: Dict[str, Any],
-                              save_path: str) -> str:
-        """Plot ensemble forecast with confidence intervals"""
+                              test_data: pd.DataFrame, save_path: str) -> str:
+        """Plot ensemble forecast with individual model forecasts and confidence intervals"""
         try:
             import matplotlib.pyplot as plt
             
+            # Debug: Print data index information
+            logger.info(f"Validation data index type: {type(validation_data.index)}")
+            logger.info(f"Validation data index range: {validation_data.index.min()} to {validation_data.index.max()}")
+            logger.info(f"Validation data index frequency: {getattr(validation_data.index, 'freq', 'None')}")
+            
+            # Get the last portion of validation data for context
+            context_data = validation_data.tail(200)  # Last 200 observations for better context
+            
+            # Create the plot
             fig, ax = plt.subplots(figsize=(15, 8))
             
             # Plot historical data
-            ax.plot(data.index, data['value'], 'b-', label='Historical Data', linewidth=2)
+            ax.plot(context_data.index, context_data['value'], 
+                   label='Historical Data', color='black', linewidth=2, alpha=0.8)
+            ax.plot(test_data.index, test_data['value'], 'g-', label='Test Data', linewidth=2)
             
-            # Plot ensemble prediction
-            if ensemble_predictions:
-                ensemble_pred = ensemble_predictions['predictions']
-                forecast_index = range(len(data), len(data) + len(ensemble_pred))
-                ax.plot(forecast_index, ensemble_pred, 'r-', label='Ensemble Forecast', 
-                       linewidth=3, alpha=0.9)
-                
-                # Plot confidence intervals
-                if confidence_intervals:
-                    for confidence_level, intervals in confidence_intervals.items():
-                        lower = intervals['lower']
-                        upper = intervals['upper']
-                        ax.fill_between(forecast_index, lower, upper, alpha=0.2, 
-                                      label=f'{confidence_level} Confidence')
+            # Create future time index
+            last_date = context_data.index[-1]
+            if isinstance(last_date, pd.Timestamp):
+                if hasattr(validation_data.index, 'freq') and validation_data.index.freq is not None:
+                    # If data has a frequency, extend the index properly
+                    forecast_dates = pd.date_range(start=last_date + validation_data.index.freq, 
+                                                 periods=len(ensemble_predictions['predictions']), 
+                                                 freq=validation_data.index.freq)
+                else:
+                    # Try to infer frequency from the data
+                    if len(validation_data.index) > 1:
+                        inferred_freq = pd.infer_freq(validation_data.index)
+                        if inferred_freq:
+                            forecast_dates = pd.date_range(start=last_date + pd.Timedelta(hours=1), 
+                                                         periods=len(ensemble_predictions['predictions']), 
+                                                         freq=inferred_freq)
+                        else:
+                            # Use hourly frequency as default
+                            forecast_dates = pd.date_range(start=last_date + pd.Timedelta(hours=1), 
+                                                         periods=len(ensemble_predictions['predictions']), 
+                                                         freq='h')
+                    else:
+                        forecast_dates = pd.date_range(start=last_date + pd.Timedelta(hours=1), 
+                                                     periods=len(ensemble_predictions['predictions']), 
+                                                     freq='h')
+            else:
+                # If not datetime index, use sequential index
+                forecast_dates = pd.RangeIndex(start=len(context_data), 
+                                             stop=len(context_data) + len(ensemble_predictions['predictions']))
             
-            ax.set_title('Ensemble Forecast with Confidence Intervals', fontweight='bold', fontsize=14)
-            ax.set_xlabel('Time')
-            ax.set_ylabel('Value')
-            ax.legend()
+            # Plot individual model forecasts with different colors
+            colors = ['blue', 'green', 'red', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
+            for i, (model_name, predictions) in enumerate(individual_predictions.items()):
+                color = colors[i % len(colors)]
+                # Use only the available forecast dates for this model
+                model_forecast_dates = forecast_dates[:len(predictions)]
+                ax.plot(model_forecast_dates, predictions, 
+                       label=f'{model_name}', color=color, linewidth=1.5, alpha=0.7, linestyle='--')
+            
+            # Plot ensemble forecast (highlighted)
+            ensemble_pred = ensemble_predictions['predictions']
+            ensemble_forecast_dates = forecast_dates[:len(ensemble_pred)]
+            ax.plot(ensemble_forecast_dates, ensemble_pred, 
+                   label='Ensemble Forecast', color='red', linewidth=3, marker='o', markersize=6)
+            
+            # Plot confidence intervals
+            if confidence_intervals:
+                for confidence_level, intervals in confidence_intervals.items():
+                    lower = intervals['lower']
+                    upper = intervals['upper']
+                    # Use only the available forecast dates for confidence intervals
+                    ci_forecast_dates = forecast_dates[:len(lower)]
+                    ax.fill_between(ci_forecast_dates, lower, upper, alpha=0.2, 
+                                  label=f'{confidence_level} Confidence')
+            
+            # Add vertical line to separate historical and forecast
+            ax.axvline(x=last_date, color='gray', linestyle='--', alpha=0.7, label='Forecast Start')
+            
+            # Customize the plot
+            ax.set_title('Ensemble Forecast with Individual Model Predictions', fontsize=16, fontweight='bold')
+            ax.set_xlabel('Time', fontsize=12)
+            ax.set_ylabel('Value', fontsize=12)
+            ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
             ax.grid(True, alpha=0.3)
             
+            # Add ensemble method information
+            ensemble_method = ensemble_predictions.get('method_used', 'unknown')
+            method_text = f'Ensemble Method: {ensemble_method}'
+            ax.text(0.02, 0.98, method_text, transform=ax.transAxes, 
+                   verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+                   fontsize=10)
+            
+            # Adjust layout to prevent label cutoff
             plt.tight_layout()
+            
+            # Save plot
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             plt.close()
             
+            logger.info(f"Ensemble forecast plot saved to: {save_path}")
             return save_path
             
         except Exception as e:
@@ -533,7 +801,7 @@ class ForecastAgent:
             logger.error(f"Forecast distribution plot failed: {e}")
             return ""
     
-    def _save_forecast_results(self, individual_predictions: Dict[str, List[float]],
+    def _save_forecast_results(self, individual_predictions: Dict[str, Any],
                              ensemble_predictions: Dict[str, Any], forecast_metrics: Dict[str, Any],
                              confidence_intervals: Dict[str, Any], output_dir: str):
         """Save forecast results"""
@@ -554,7 +822,7 @@ class ForecastAgent:
         FileSaver.save_json(forecast_report, report_path)
         logger.info(f"Forecast report saved to {report_path}")
     
-    def _update_memory(self, individual_predictions: Dict[str, List[float]],
+    def _update_memory(self, individual_predictions: Dict[str, Any],
                       ensemble_predictions: Dict[str, Any], forecast_metrics: Dict[str, Any],
                       confidence_intervals: Dict[str, Any], visualizations: Dict[str, str]):
         """Update memory"""
@@ -573,20 +841,3 @@ class ForecastAgent:
                 'visualization_count': len(visualizations)
             }
         )
-    
-    def get_forecast_summary(self) -> Dict[str, Any]:
-        """Get forecast summary"""
-        individual_predictions = self.memory.retrieve('individual_predictions', 'forecasts')
-        ensemble_predictions = self.memory.retrieve('ensemble_predictions', 'forecasts')
-        forecast_metrics = self.memory.retrieve('forecast_metrics', 'forecasts')
-        
-        if not individual_predictions:
-            return {}
-        
-        summary = {
-            'models_used': list(individual_predictions.keys()),
-            'ensemble_method': ensemble_predictions.get('method_used', 'unknown') if ensemble_predictions else 'unknown',
-            'forecast_metrics': forecast_metrics
-        }
-        
-        return summary 
