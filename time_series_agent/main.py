@@ -14,7 +14,7 @@ from config.default_config import DEFAULT_CONFIG
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("Time Series Prediction Agent - Industrial-grade System")
+    print("TimeSeriesSciensist")
     print("=" * 60)
 
     # 1. Create and customize config
