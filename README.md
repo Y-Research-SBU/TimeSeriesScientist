@@ -8,7 +8,7 @@
   <br>
   
   <p>
-      <a href="https://github.com/colzela">Haokun Zhao</a><sup>1,2 ★</sup>&nbsp;
+      <a href="https://haokun-zhao.github.io">Haokun Zhao</a><sup>1,2 ★</sup>&nbsp;
       <a href="https://wyattz23.github.io">Xiang Zhang</a><sup>3 ★</sup>&nbsp;
       <a href="https://upup-wei.github.io/">Jiaqi Wei</a><sup>4 ★</sup>&nbsp;
       <a href="https://Y-Research-SBU.github.io/PosterGen">Yiwei Xu</a><sup>5</sup>&nbsp; <br>
